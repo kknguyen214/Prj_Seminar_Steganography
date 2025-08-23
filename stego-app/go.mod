@@ -1,12 +1,11 @@
-module steganography-api
+module stego-app
 
-go 1.24.4
+go 1.24.0
 
 require (
 	github.com/auyer/steganography v1.0.3
 	github.com/gin-gonic/gin v1.10.1
 	golang.org/x/crypto v0.41.0
-	golang.org/x/image v0.30.0
 )
 
 require (
