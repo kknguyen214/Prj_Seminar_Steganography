@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"image"
 	"io"
-	"math/rand"
+	"mime/multipart"
 	"net/http"
 
 	"stego-app/models"
@@ -14,86 +16,196 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type EmbedRequest struct {
+	Image       image.Image
+	Passphrase  string
+	MessageType string
+	Text        string
+	AudioData   []byte
+	ImageData   []byte
+}
+
 func EmbedHandler(c *gin.Context) {
+	// Parse request
+	req, err := parseEmbedRequest(c)
+	if err != nil {
+		respondError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Process embedding
+	result, err := processEmbed(req)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Return result
+	c.Header("Content-Type", "image/png")
+	c.Header("Content-Disposition", "attachment; filename=embedded_image.png")
+	c.Data(http.StatusOK, "image/png", result)
+}
+
+// parseEmbedRequest parse toàn bộ request data
+func parseEmbedRequest(c *gin.Context) (*EmbedRequest, error) {
 	form, err := c.MultipartForm()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.Response{Success: false, Message: "Failed to parse form"})
-		return
+		return nil, errors.New("failed to parse form")
 	}
 
+	// Parse image
+	img, err := parseImage(form)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &EmbedRequest{
+		Image:       img,
+		Passphrase:  c.PostForm("passphrase"),
+		MessageType: c.PostForm("message_type"),
+		Text:        c.PostForm("text"),
+	}
+
+	// Validate required fields
+	if req.Passphrase == "" || req.MessageType == "" {
+		return nil, errors.New("passphrase and message_type required")
+	}
+
+	// Parse content theo type
+	if err := parseMessageContent(form, req); err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// parseImage xử lý image upload
+func parseImage(form *multipart.Form) (image.Image, error) {
 	files := form.File["image"]
 	if len(files) == 0 {
-		c.JSON(http.StatusBadRequest, models.Response{Success: false, Message: "No image provided"})
-		return
+		return nil, errors.New("no image provided")
 	}
+
 	file := files[0]
-
-	format := utils.GetImageFormat(file.Filename)
-	if format == "" {
-		c.JSON(http.StatusBadRequest, models.Response{
-			Success: false,
-			Message: "Unsupported image format",
-		})
-		return
+	if utils.GetImageFormat(file.Filename) == "" {
+		return nil, errors.New("unsupported image format")
 	}
 
-	src, _ := file.Open()
+	src, err := file.Open()
+	if err != nil {
+		return nil, err
+	}
 	defer src.Close()
 
 	img, _, err := image.Decode(src)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.Response{Success: false, Message: "Invalid image format"})
-		return
+		return nil, errors.New("invalid image format")
 	}
 
-	passphrase := c.PostForm("passphrase")
-	messageType := c.PostForm("message_type")
-	text := c.PostForm("text")
+	return img, nil
+}
 
-	if passphrase == "" || messageType == "" {
-		c.JSON(http.StatusBadRequest, models.Response{Success: false, Message: "Passphrase and message_type required"})
-		return
-	}
-
-	messageData := map[string]interface{}{"type": messageType, "content": text}
-
-	switch messageType {
+// parseMessageContent parse content theo message type
+func parseMessageContent(form *multipart.Form, req *EmbedRequest) error {
+	switch req.MessageType {
 	case "audio":
 		audioFiles := form.File["audio"]
 		if len(audioFiles) == 0 {
-			c.JSON(http.StatusBadRequest, models.Response{Success: false, Message: "Audio file required"})
-			return
+			return errors.New("audio file required")
 		}
-		audioSrc, _ := audioFiles[0].Open()
-		defer audioSrc.Close()
-		data, _ := io.ReadAll(audioSrc)
-		messageData["content"] = base64.StdEncoding.EncodeToString(data)
+
+		src, err := audioFiles[0].Open()
+		if err != nil {
+			return err
+		}
+		defer src.Close()
+
+		req.AudioData, err = io.ReadAll(src)
+		return err
+
 	case "image":
 		imgFiles := form.File["message_image"]
 		if len(imgFiles) == 0 {
-			c.JSON(http.StatusBadRequest, models.Response{Success: false, Message: "Message image required"})
-			return
+			return errors.New("message image required")
 		}
-		imgSrc, _ := imgFiles[0].Open()
-		defer imgSrc.Close()
-		data, _ := io.ReadAll(imgSrc)
-		messageData["content"] = base64.StdEncoding.EncodeToString(data)
+
+		src, err := imgFiles[0].Open()
+		if err != nil {
+			return err
+		}
+		defer src.Close()
+
+		req.ImageData, err = io.ReadAll(src)
+		return err
+
+	case "text":
+		if req.Text == "" {
+			return errors.New("text content required")
+		}
+		return nil
+
+	default:
+		return errors.New("invalid message_type. Must be: text, audio, or image")
+	}
+}
+
+// processEmbed xử lý toàn bộ quy trình embed
+func processEmbed(req *EmbedRequest) ([]byte, error) {
+	// Tạo message data
+	messageData := createMessageData(req)
+
+	// Serialize to JSON
+	jsonData, err := json.Marshal(messageData)
+	if err != nil {
+		return nil, err
 	}
 
-	jsonData, _ := json.Marshal(messageData)
+	// Generate salt và encrypt
 	salt := make([]byte, 16)
-	rand.Read(salt)
-	key := utils.GenerateKey(passphrase, salt)
-	encrypted, _ := utils.EncryptData(jsonData, key)
+	if _, err := rand.Read(salt); err != nil {
+		return nil, err
+	}
+
+	key := utils.GenerateKey(req.Passphrase, salt)
+	encrypted, err := utils.EncryptData(jsonData, key)
+	if err != nil {
+		return nil, err
+	}
+
+	// Combine salt + encrypted data
 	fullData := append(salt, encrypted...)
 
-	buf, err := utils.EmbedDataInImage(img, fullData)
+	// Embed vào image
+	buf, err := utils.EmbedDataInImage(req.Image, fullData)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.Response{Success: false, Message: err.Error()})
-		return
+		return nil, err
 	}
 
-	c.Header("Content-Type", "image/png")
-	c.Header("Content-Disposition", "attachment; filename=embedded_image.png")
-	c.Data(http.StatusOK, "image/png", buf.Bytes())
+	return buf.Bytes(), nil
+}
+
+// createMessageData tạo message data structure
+func createMessageData(req *EmbedRequest) map[string]interface{} {
+	messageData := map[string]interface{}{
+		"type": req.MessageType,
+	}
+
+	switch req.MessageType {
+	case "text":
+		messageData["content"] = req.Text
+	case "audio":
+		messageData["content"] = base64.StdEncoding.EncodeToString(req.AudioData)
+	case "image":
+		messageData["content"] = base64.StdEncoding.EncodeToString(req.ImageData)
+	}
+
+	return messageData
+}
+
+// respondError helper function cho error response
+func respondError(c *gin.Context, statusCode int, message string) {
+	c.JSON(statusCode, models.Response{
+		Success: false,
+		Message: message,
+	})
 }
