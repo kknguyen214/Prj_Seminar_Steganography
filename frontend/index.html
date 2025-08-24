@@ -1,369 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<link rel="stylesheet" href="style.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Steganography Tool</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: white;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            text-align: center;
-            padding: 30px;
-        }
-
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 1.1em;
-        }
-
-        .tabs {
-            display: flex;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 20px;
-            text-align: center;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: 600;
-            color: #6c757d;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .tab.active {
-            color: #4facfe;
-            background: white;
-        }
-
-        .tab.active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        .tab-content {
-            display: none;
-            padding: 40px;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            margin-bottom: 30px;
-        }
-
-        .form-section {
-            background: #f8f9fa;
-            padding: 30px;
-            border-radius: 15px;
-            border: 2px solid #e9ecef;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-section:hover {
-            border-color: #4facfe;
-        }
-
-        .form-section h3 {
-            color: #343a40;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .form-section h3::before {
-            content: '';
-            width: 4px;
-            height: 20px;
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            border-radius: 2px;
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #495057;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            font-size: 1em;
-            transition: all 0.3s ease;
-            background: white;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: #4facfe;
-            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
-        }
-
-        .file-input {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-            width: 100%;
-        }
-
-        .file-input input[type=file] {
-            position: absolute;
-            left: -9999px;
-        }
-
-        .file-input-label {
-            display: block;
-            padding: 15px;
-            border: 2px dashed #4facfe;
-            border-radius: 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: rgba(79, 172, 254, 0.05);
-            color: #4facfe;
-            font-weight: 600;
-        }
-
-        .file-input-label:hover {
-            background: rgba(79, 172, 254, 0.1);
-            border-style: solid;
-        }
-
-        .file-input-label.has-file {
-            border-color: #28a745;
-            color: #28a745;
-            background: rgba(40, 167, 69, 0.1);
-        }
-
-        .btn {
-            padding: 15px 30px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-            transform: translateY(-2px);
-        }
-
-        .btn-container {
-            text-align: center;
-            margin-top: 30px;
-        }
-
-        .result-container {
-            margin-top: 30px;
-            padding: 30px;
-            background: #f8f9fa;
-            border-radius: 15px;
-            border-left: 5px solid #28a745;
-        }
-
-        .result-container.error {
-            border-left-color: #dc3545;
-            background: #fff5f5;
-        }
-
-        .result-container h4 {
-            color: #28a745;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .result-container.error h4 {
-            color: #dc3545;
-        }
-
-        .result-image {
-            max-width: 100%;
-            height: auto;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin: 15px 0;
-        }
-
-        .result-audio {
-            width: 100%;
-            margin: 15px 0;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .loading.show {
-            display: block;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #4facfe;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .info-box {
-            background: #e3f2fd;
-            border: 1px solid #2196f3;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 30px;
-            color: #1976d2;
-        }
-
-        .info-box h4 {
-            margin-bottom: 10px;
-            color: #1565c0;
-        }
-
-        @media (max-width: 768px) {
-            .form-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-            
-            .tabs {
-                flex-direction: column;
-            }
-            
-            .container {
-                margin: 10px;
-            }
-            
-            .header h1 {
-                font-size: 2em;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔒 Steganography Tool</h1>
-            <p>Hide and extract secret data in images, audio, and video files</p>
+            <div class="header-content">
+                <h1>🔮 Steganography Lab</h1>
+                <p class="header-subtitle">Advanced cryptographic data concealment system for secure information embedding and extraction</p>
+            </div>
         </div>
 
         <div class="tabs">
             <button class="tab active" onclick="switchTab('embed')">
-                📦 Embed Data
+                🔐 Data Embedding
             </button>
             <button class="tab" onclick="switchTab('extract')">
-                🔍 Extract Data
+                🔍 Data Extraction
             </button>
         </div>
 
         <!-- EMBED TAB -->
         <div class="tab-content active" id="embed-tab">
             <div class="info-box">
-                <h4>📖 How to Embed Data</h4>
-                <p>Choose a host file (image/audio/video) and select the secret data you want to hide inside it. The result will look identical to the original but contain your hidden data.</p>
+                <h4>🧠 Embedding Protocol</h4>
+                <p>Utilize advanced steganographic algorithms to imperceptibly embed confidential data within multimedia carriers. The process employs cryptographic protection to ensure data integrity and security.</p>
             </div>
 
             <form id="embed-form">
-                 <div class="form-grid">
+                <div class="form-grid">
                     <div class="form-section">
-                        <h3>Host File (Container)</h3>
+                        <h3>📁 Host Container</h3>
                         <div class="form-group">
-                            <label>Media Type *</label>
+                            <label>Media Classification</label>
                             <select class="form-control" id="host-media-type" required onchange="updateHostFileInput()">
-                                <option value="">Select media type</option>
-                                <option value="image">🖼️ Image</option>
-                                <option value="audio">🎵 Audio</option>
-                                <option value="video">🎬 Video</option>
+                                <option value="">Select carrier type</option>
+                                <option value="image">🖼️ Image Container</option>
+                                <option value="audio">🎵 Audio Container</option>
+                                <option value="video">🎬 Video Container</option>
                             </select>
                         </div>
                         <div class="form-group" id="host-file-group" style="display: none;">
-                            <label>Select Host File *</label>
+                            <label>Host File Selection</label>
                             <div class="file-input">
                                 <input type="file" id="host-file" accept="" required disabled>
                                 <label for="host-file" class="file-input-label" id="host-file-label">
-                                    📁 Choose File
+                                    📁 Select Host File
                                     <div id="host-file-name"></div>
                                 </label>
                             </div>
@@ -371,40 +57,52 @@
                     </div>
 
                     <div class="form-section">
-                        <h3>Secret Data to Hide</h3>
+                        <h3>🗂️ Payload Configuration</h3>
                         <div class="form-group">
-                            <label>Data Type *</label>
-                            <select class="form-control" id="message-type" required onchange="toggleMessageInput()">
-                                <option value="">Select data type</option>
-                                <option value="text">📝 Text Message</option>
-                                <option value="image">🖼️ Image File</option>
-                                <option value="audio">🎵 Audio File</option>
+                            <label>Data Classification</label>
+                            <select class="form-control" id="message-type" required onchange="updateMessageInputs()">
+                                <option value="">Select payload type</option>
+                                <option value="text">📝 Text Payload</option>
+                                <option value="image">🖼️ Image Payload</option>
+                                <option value="audio">🎵 Audio Payload</option>
+                                <option value="video">🎬 Video Payload</option>
                             </select>
                         </div>
 
                         <div class="form-group" id="text-input" style="display: none;">
-                            <label>Secret Text *</label>
-                            <textarea class="form-control" id="secret-text" rows="4" placeholder="Enter your secret message here..."></textarea>
+                            <label>Confidential Text</label>
+                            <textarea class="form-control" id="secret-text" rows="4" placeholder="Enter classified information..."></textarea>
                         </div>
 
                         <div class="form-group" id="image-input" style="display: none;">
-                            <label>Secret Image *</label>
+                            <label>Image Payload</label>
                             <div class="file-input">
                                 <input type="file" id="secret-image" accept="image/*">
                                 <label for="secret-image" class="file-input-label">
-                                    🖼️ Choose Image File
+                                    🖼️ Select Image File
                                     <div id="secret-image-name"></div>
                                 </label>
                             </div>
                         </div>
 
                         <div class="form-group" id="audio-input" style="display: none;">
-                            <label>Secret Audio *</label>
+                            <label>Audio Payload</label>
                             <div class="file-input">
                                 <input type="file" id="secret-audio" accept="audio/*">
                                 <label for="secret-audio" class="file-input-label">
-                                    🎵 Choose Audio File
+                                    🎵 Select Audio File
                                     <div id="secret-audio-name"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group" id="video-input" style="display: none;">
+                            <label>Video Payload</label>
+                            <div class="file-input">
+                                <input type="file" id="secret-video" accept="video/*">
+                                <label for="secret-video" class="file-input-label">
+                                    🎬 Select Video File
+                                    <div id="secret-video-name"></div>
                                 </label>
                             </div>
                         </div>
@@ -412,20 +110,20 @@
                 </div>
 
                 <div class="form-group">
-                    <label>🔐 Password (required for encryption) *</label>
-                    <input type="password" class="form-control" id="embed-password" placeholder="Enter a strong password" required>
+                    <label>🔑 Cryptographic Passphrase</label>
+                    <input type="password" class="form-control" id="embed-password" placeholder="Enter secure encryption key" required>
                 </div>
 
                 <div class="btn-container">
                     <button type="submit" class="btn btn-primary">
-                        🔒 Embed Data
+                        🚀 Execute Embedding
                     </button>
                 </div>
             </form>
 
             <div class="loading" id="embed-loading">
                 <div class="spinner"></div>
-                <p>Processing... Please wait</p>
+                <p>Processing steganographic embedding...</p>
             </div>
 
             <div id="embed-result"></div>
@@ -434,32 +132,81 @@
         <!-- EXTRACT TAB -->
         <div class="tab-content" id="extract-tab">
             <div class="info-box">
-                <h4>🔍 How to Extract Data</h4>
-                <p>Upload a file that contains hidden data and enter the correct password to reveal the secret information.</p>
+                <h4>🔬 Extraction Protocol</h4>
+                <p>Deploy advanced analysis algorithms to recover concealed data from steganographic containers. Requires correct cryptographic credentials for successful data retrieval.</p>
             </div>
 
             <form id="extract-form">
                 <div class="form-section">
-                    <h3>File with Hidden Data</h3>
+                    <h3>📊 Container Analysis</h3>
+
+                    <!-- Select media type -->
                     <div class="form-group">
-                        <label>Select File *</label>
+                        <label>Container Type</label>
+                        <select class="form-control" id="extract-media-type" required onchange="updateExtractInputs()">
+                            <option value="">Select container type</option>
+                            <option value="image">🖼️ Image</option>
+                            <option value="audio">🎵 Audio</option>
+                            <option value="video">🎬 Video</option>
+                        </select>
+                    </div>
+
+                    <!-- Image input -->
+                    <div class="form-group" id="extract-image-input" style="display: none;">
+                        <label>Image Container</label>
                         <div class="file-input">
-                            <input type="file" id="extract-file" accept="image/*,audio/*,video/*" required>
-                            <label for="extract-file" class="file-input-label">
-                                📁 Choose File with Hidden Data
-                                <div id="extract-file-name"></div>
+                            <input type="file" id="extract-image-file" accept="image/*">
+                            <label for="extract-image-file" class="file-input-label">
+                                🖼️ Select Image File
+                                <div id="extract-image-file-name"></div>
                             </label>
                         </div>
                     </div>
 
+                    <!-- Audio input -->
+                    <div class="form-group" id="extract-audio-input" style="display: none;">
+                        <label>Audio Container</label>
+                        <div class="file-input">
+                            <input type="file" id="extract-audio-file" accept="audio/*">
+                            <label for="extract-audio-file" class="file-input-label">
+                                🎵 Select Audio File
+                                <div id="extract-audio-file-name"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Video input -->
+                    <div class="form-group" id="extract-video-input" style="display: none;">
+                        <label>Video Container</label>
+                        <div class="file-input">
+                            <input type="file" id="extract-video-file" accept="video/*">
+                            <label for="extract-video-file" class="file-input-label">
+                                🎬 Select Video File
+                                <div id="extract-video-file-name"></div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- <div class="form-group">
+                        <label>Steganographic Container</label>
+                        <div class="file-input">
+                            <input type="file" id="extract-file" accept="image/*,audio/*,video/*" required>
+                            <label for="extract-file" class="file-input-label">
+                                🔍 Select Container File
+                                <div id="extract-file-name"></div>
+                            </label>
+                        </div>
+                    </div> -->
+
+                    <!-- Decryption passphrase -->
                     <div class="form-group">
-                        <label>🔐 Password *</label>
-                        <input type="password" class="form-control" id="extract-password" placeholder="Enter password used for embedding" required>
+                        <label>🔑 Decryption Passphrase</label>
+                        <input type="password" class="form-control" id="extract-password" placeholder="Enter decryption key" required>
                     </div>
 
                     <div class="btn-container">
                         <button type="submit" class="btn btn-primary">
-                            🔍 Extract Data
+                            🔓 Execute Extraction
                         </button>
                     </div>
                 </div>
@@ -467,13 +214,13 @@
 
             <div class="loading" id="extract-loading">
                 <div class="spinner"></div>
-                <p>Extracting data... Please wait</p>
+                <p>Analyzing steganographic data...</p>
             </div>
 
             <div id="extract-result"></div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js" defer></script>
 </body>
 </html>

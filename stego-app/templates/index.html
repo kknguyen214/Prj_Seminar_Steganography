@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steganography Tool - Hide & Reveal Secrets</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            color: rgba(255,255,255,0.9);
+            font-size: 1.2rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 40px;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .mode-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 15px 30px;
+            margin: 0 10px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mode-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .mode-btn:hover::before {
+            left: 100%;
+        }
+
+        .mode-btn.active {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .main-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(20px);
+            animation: slideInUp 0.8s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .main-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .form-section {
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .form-section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 0.95rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-upload-btn {
+            display: block;
+            width: 100%;
+            padding: 20px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f7fafc;
+            color: #4a5568;
+        }
+
+        .file-upload-btn:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .file-upload-btn.has-file {
+            border-color: #48bb78;
+            background: rgba(72, 187, 120, 0.05);
+            color: #2d3748;
+        }
+
+        .file-info {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(72, 187, 120, 0.1);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #2d3748;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        .result-section {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(72, 187, 120, 0.1);
+            border-radius: 15px;
+            border-left: 4px solid #48bb78;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .result-section.error {
+            background: rgba(245, 101, 101, 0.1);
+            border-left-color: #f56565;
+        }
+
+        .result-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #2d3748;
+        }
+
+        .download-btn {
+            background: #48bb78;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .download-btn:hover {
+            background: #38a169;
+            transform: translateY(-1px);
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            gap: 10px;
+        }
+
+        .step {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(102, 126, 234, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .step.active {
+            background: #667eea;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .step.completed {
+            background: #48bb78;
+            color: white;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .preview-area {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 10px;
+            border: 2px dashed #e2e8f0;
+            text-align: center;
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-content {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .floating-shapes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .shape {
+            position: absolute;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .shape:nth-child(1) {
+            width: 80px;
+            height: 80px;
+            top: 20%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .shape:nth-child(2) {
+            width: 60px;
+            height: 60px;
+            top: 60%;
+            right: 10%;
+            animation-delay: 2s;
+        }
+
+        .shape:nth-child(3) {
+            width: 40px;
+            height: 40px;
+            bottom: 20%;
+            left: 20%;
+            animation-delay: 4s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.5rem;
+            }
+            
+            .main-card {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .mode-btn {
+                padding: 12px 20px;
+                font-size: 1rem;
+            }
+        }
+
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2d3748;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-shapes">
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-mask"></i> Steganography Tool</h1>
+            <p>Hide and reveal secret messages in images, audio, and video files with military-grade encryption</p>
+        </div>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="embed">
+                <i class="fas fa-plus-circle"></i> Hide Message
+            </button>
+            <button class="mode-btn" data-mode="extract">
+                <i class="fas fa-search"></i> Reveal Message
+            </button>
+        </div>
+
+        <div class="main-card">
+            <!-- Embed Section -->
+            <div id="embed-section" class="form-section active">
+                <div class="step-indicator">
+                    <div class="step active">1</div>
+                    <div class="step">2</div>
+                    <div class="step">3</div>
+                </div>
+
+                <form id="embed-form">
+                    <div class="grid">
+                        <div class="form-group">
+                            <label for="embed-passphrase">
+                                <i class="fas fa-lock"></i> Passphrase 
+                                <span class="tooltip" data-tooltip="Strong password to encrypt your secret message">
+                                    <i class="fas fa-info-circle"></i>
+                                </span>
+                            </label>
+                            <input type="password" id="embed-passphrase" class="form-control" 
+                                   placeholder="Enter a strong password" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="carrier-type">
+                                <i class="fas fa-file"></i> Carrier File Type
+                            </label>
+                            <select id="carrier-type" class="form-control" required>
+                                <option value="">Choose carrier type...</option>
+                                <option value="image">📷 Image (PNG, JPG, BMP)</option>
+                                <option value="audio">🎵 Audio (WAV, MP3, FLAC)</option>
+                                <option value="video">🎬 Video (MP4, AVI, MKV)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="carrier-file">
+                            <i class="fas fa-upload"></i> Upload Carrier File
+                        </label>
+                        <div class="file-upload">
+                            <input type="file" id="carrier-file" required>
+                            <label for="carrier-file" class="file-upload-btn">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <span>Click to upload or drag and drop</span>
+                            </label>
+                            <div class="file-info"></div>
+                        </div>
+                        <div id="carrier-preview" class="preview-area" style="display: none;">
+                            <div class="preview-content"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="message-type">
+                            <i class="fas fa-envelope"></i> Secret Message Type
+                        </label>
+                        <select id="message-type" class="form-control" required>
+                            <option value="">Choose message type...</option>
+                            <option value="text">📝 Text Message</option>
+                            <option value="image">🖼️ Image File</option>
+                            <option value="audio">🎤 Audio File</option>
+                            <option value="video">📹 Video File</option>
+                        </select>
+                    </div>
+
+                    <div id="text-input" class="form-group" style="display: none;">
+                        <label for="secret-text">
+                            <i class="fas fa-pencil-alt"></i> Secret Text Message
+                        </label>
+                        <textarea id="secret-text" class="form-control" rows="4" 
+                                  placeholder="Enter your secret message here..."></textarea>
+                    </div>
+
+                    <div id="message-file-input" class="form-group" style="display: none;">
+                        <label for="message-file">
+                            <i class="fas fa-file-upload"></i> Upload Secret File
+                        </label>
+                        <div class="file-upload">
+                            <input type="file" id="message-file">
+                            <label for="message-file" class="file-upload-btn">
+                                <i class="fas fa-upload"></i>
+                                <span>Upload your secret file</span>
+                            </label>
+                            <div class="file-info"></div>
+                        </div>
+                        <div id="message-preview" class="preview-area" style="display: none;">
+                            <div class="preview-content"></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn">
+                        <span class="btn-text"><i class="fas fa-magic"></i> Hide Message</span>
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Extract Section -->
+            <div id="extract-section" class="form-section">
+                <div class="step-indicator">
+                    <div class="step active">1</div>
+                    <div class="step">2</div>
+                </div>
+
+                <form id="extract-form">
+                    <div class="grid">
+                        <div class="form-group">
+                            <label for="extract-passphrase">
+                                <i class="fas fa-unlock"></i> Passphrase
+                            </label>
+                            <input type="password" id="extract-passphrase" class="form-control" 
+                                   placeholder="Enter the passphrase" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="extract-type">
+                                <i class="fas fa-file-alt"></i> File Type
+                            </label>
+                            <select id="extract-type" class="form-control" required>
+                                <option value="">Choose file type...</option>
+                                <option value="image">📷 Image</option>
+                                <option value="audio">🎵 Audio</option>
+                                <option value="video">🎬 Video</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="extract-file">
+                            <i class="fas fa-upload"></i> Upload File with Hidden Message
+                        </label>
+                        <div class="file-upload">
+                            <input type="file" id="extract-file" required>
+                            <label for="extract-file" class="file-upload-btn">
+                                <i class="fas fa-search"></i>
+                                <span>Upload file to extract message from</span>
+                            </label>
+                            <div class="file-info"></div>
+                        </div>
+                        <div id="extract-preview" class="preview-area" style="display: none;">
+                            <div class="preview-content"></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn">
+                        <span class="btn-text"><i class="fas fa-eye"></i> Reveal Message</span>
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Result Section -->
+            <div id="result-section" class="result-section">
+                <div class="result-title">
+                    <i class="fas fa-check-circle"></i> <span id="result-title-text">Success!</span>
+                </div>
+                <div id="result-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentMode = 'embed';
+        let currentStep = 1;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            updateStepIndicator();
+        });
+
+        function initializeEventListeners() {
+            // Mode switching
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    switchMode(this.dataset.mode);
+                });
+            });
+
+            // Form submissions
+            document.getElementById('embed-form').addEventListener('submit', handleEmbedSubmit);
+            document.getElementById('extract-form').addEventListener('submit', handleExtractSubmit);
+
+            // File uploads
+            setupFileUpload('carrier-file', 'carrier-preview');
+            setupFileUpload('message-file', 'message-preview');
+            setupFileUpload('extract-file', 'extract-preview');
+
+            // Dynamic form updates
+            document.getElementById('carrier-type').addEventListener('change', updateCarrierFileAccept);
+            document.getElementById('message-type').addEventListener('change', updateMessageInput);
+            document.getElementById('extract-type').addEventListener('change', updateExtractFileAccept);
+
+            // Password strength indicator
+            document.getElementById('embed-passphrase').addEventListener('input', updatePasswordStrength);
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // Update buttons
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+
+            // Update sections
+            document.querySelectorAll('.form-section').forEach(section => {
+                section.classList.toggle('active', section.id === mode + '-section');
+            });
+
+            // Reset forms and results
+            resetForms();
+            hideResult();
+            updateStepIndicator();
+        }
+
+        function updateStepIndicator() {
+            const steps = document.querySelectorAll('.step');
+            steps.forEach((step, index) => {
+                const stepNumber = index + 1;
+                step.classList.toggle('active', stepNumber === currentStep);
+                step.classList.toggle('completed', stepNumber < currentStep);
+            });
+        }
+
+        function setupFileUpload(inputId, previewId) {
+            const input = document.getElementById(inputId);
+            const label = input.parentElement.querySelector('.file-upload-btn');
+            const info = input.parentElement.querySelector('.file-info');
+            const preview = document.getElementById(previewId);
+
+            input.addEventListener('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    label.classList.add('has-file');
+                    label.innerHTML = `<i class="fas fa-check-circle"></i> ${file.name}`;
+                    
+                    info.style.display = 'block';
+                    info.innerHTML = `
+                        <i class="fas fa-info-circle"></i>
+                        Size: ${formatFileSize(file.size)} | 
+                        Type: ${file.type || 'Unknown'}
+                    `;
+
+                    // Show preview if applicable
+                    if (preview && (file.type.startsWith('image/') || file.type.startsWith('audio/') || file.type.startsWith('video/'))) {
+                        showFilePreview(file, preview);
+                    }
+                } else {
+                    resetFileUpload(label, info, preview);
+                }
+            });
+
+            // Drag and drop
+            label.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#667eea';
+                this.style.background = 'rgba(102, 126, 234, 0.1)';
+            });
+
+            label.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#cbd5e0';
+                this.style.background = '#f7fafc';
+            });
+
+            label.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#cbd5e0';
+                this.style.background = '#f7fafc';
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    input.files = files;
+                    input.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+
+        function showFilePreview(file, preview) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.style.display = 'flex';
+                const content = preview.querySelector('.preview-content');
+                
+                if (file.type.startsWith('image/')) {
+                    content.innerHTML = `<img src="${e.target.result}" class="preview-content" alt="Preview">`;
+                } else if (file.type.startsWith('audio/')) {
+                    content.innerHTML = `<audio controls class="preview-content"><source src="${e.target.result}"></audio>`;
+                } else if (file.type.startsWith('video/')) {
+                    content.innerHTML = `<video controls class="preview-content" style="max-height: 200px;"><source src="${e.target.result}"></video>`;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function resetFileUpload(label, info, preview) {
+            label.classList.remove('has-file');
+            label.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> <span>Click to upload or drag and drop</span>';
+            info.style.display = 'none';
+            if (preview) preview.style.display = 'none';
+        }
+
+        function updateCarrierFileAccept() {
+            const type = document.getElementById('carrier-type').value;
+            const input = document.getElementById('carrier-file');
+            
+            switch(type) {
+                case 'image':
+                    input.accept = '.png,.jpg,.jpeg,.bmp,.tiff';
+                    break;
+                case 'audio':
+                    input.accept = '.wav,.mp3,.flac,.aac,.ogg';
+                    break;
+                case 'video':
+                    input.accept = '.mp4,.avi,.mkv,.mov,.wmv,.flv';
+                    break;
+                default:
+                    input.accept = '';
+            }
+            currentStep = Math.max(1, currentStep);
+            updateStepIndicator();
+        }
+
+        function updateMessageInput() {
+            const type = document.getElementById('message-type').value;
+            const textInput = document.getElementById('text-input');
+            const fileInput = document.getElementById('message-file-input');
+            const messageFile = document.getElementById('message-file');
+            
+            if (type === 'text') {
+                textInput.style.display = 'block';
+                fileInput.style.display = 'none';
+                messageFile.required = false;
+                document.getElementById('secret-text').required = true;
+            } else if (type) {
+                textInput.style.display = 'none';
+                fileInput.style.display = 'block';
+                messageFile.required = true;
+                document.getElementById('secret-text').required = false;
+                
+                // Update file accept
+                switch(type) {
+                    case 'image':
+                        messageFile.accept = '.png,.jpg,.jpeg,.bmp,.gif,.tiff';
+                        break;
+                    case 'audio':
+                        messageFile.accept = '.wav,.mp3,.flac,.aac,.ogg,.m4a';
+                        break;
+                    case 'video':
+                        messageFile.accept = '.mp4,.avi,.mkv,.mov,.wmv,.flv,.webm';
+                        break;
+                }
+            } else {
+                textInput.style.display = 'none';
+                fileInput.style.display = 'none';
+            }
+            
+            currentStep = type ? 3 : 2;
+            updateStepIndicator();
+        }
+
+        function updateExtractFileAccept() {
+            const type = document.getElementById('extract-type').value;
+            const input = document.getElementById('extract-file');
+            
+            switch(type) {
+                case 'image':
+                    input.accept = '.png,.jpg,.jpeg,.bmp,.tiff';
+                    break;
+                case 'audio':
+                    input.accept = '.wav,.mp3,.flac,.aac,.ogg';
+                    break;
+                case 'video':
+                    input.accept = '.mp4,.avi,.mkv,.mov,.wmv,.flv';
+                    break;
+                default:
+                    input.accept = '';
+            }
+            
+            currentStep = type ? 2 : 1;
+            updateStepIndicator();
+        }
+
+        function updatePasswordStrength() {
+            // Add password strength indicator if needed
+            // This is a placeholder for password strength functionality
+        }
+
+        async function handleEmbedSubmit(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const passphrase = document.getElementById('embed-passphrase').value;
+            const carrierType = document.getElementById('carrier-type').value;
+            const messageType = document.getElementById('message-type').value;
+            const carrierFile = document.getElementById('carrier-file').files[0];
+            
+            if (!passphrase || !carrierType || !messageType || !carrierFile) {
+                showError('Please fill in all required fields');
+                return;
+            }
+            
+            formData.append('passphrase', passphrase);
+            formData.append('media_type', carrierType);
+            formData.append('message_type', messageType);
+            
+            // Add carrier file with correct field name
+            formData.append(`carrier_${carrierType}`, carrierFile);
+            
+            // Add message content
+            if (messageType === 'text') {
+                const text = document.getElementById('secret-text').value;
+                if (!text) {
+                    showError('Please enter a text message');
+                    return;
+                }
+                formData.append('text', text);
+            } else {
+                const messageFile = document.getElementById('message-file').files[0];
+                if (!messageFile) {
+                    showError('Please select a message file');
+                    return;
+                }
+                formData.append(`message_${messageType}`, messageFile);
+            }
+            
+            await submitForm('/api/v1/embed', formData, 'embed');
+        }
+
+        async function handleExtractSubmit(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const passphrase = document.getElementById('extract-passphrase').value;
+            const extractType = document.getElementById('extract-type').value;
+            const extractFile = document.getElementById('extract-file').files[0];
+            
+            if (!passphrase || !extractType || !extractFile) {
+                showError('Please fill in all required fields');
+                return;
+            }
+            
+            formData.append('passphrase', passphrase);
+            formData.append('media_type', extractType);
+            formData.append(extractType, extractFile);
+            
+            await submitForm('/api/v1/extract', formData, 'extract');
+        }
+
+        async function submitForm(url, formData, operation) {
+            const submitBtn = document.querySelector(`#${operation}-form .submit-btn`);
+            const btnText = submitBtn.querySelector('.btn-text');
+            const loading = submitBtn.querySelector('.loading');
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            btnText.style.opacity = '0';
+            loading.style.display = 'block';
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (operation === 'embed') {
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const filename = getFilenameFromResponse(response) || 'embedded_file';
+                        downloadFile(blob, filename);
+                        showSuccess('Message hidden successfully! File downloaded.');
+                    } else {
+                        const error = await response.json();
+                        showError(error.message || 'Failed to hide message');
+                    }
+                } else {
+                    const result = await response.json();
+                    if (result.success) {
+                        displayExtractedMessage(result);
+                    } else {
+                        showError(result.message || 'Failed to extract message');
+                    }
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            } finally {
+                // Reset button state
+                submitBtn.disabled = false;
+                btnText.style.opacity = '1';
+                loading.style.display = 'none';
+            }
+        }
+
+        function getFilenameFromResponse(response) {
+            const contentDisposition = response.headers.get('Content-Disposition');
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                if (match && match[1]) {
+                    return match[1].replace(/['"]/g, '');
+                }
+            }
+            return null;
+        }
+
+        function downloadFile(blob, filename) {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+
+        function displayExtractedMessage(result) {
+            const resultSection = document.getElementById('result-section');
+            const resultContent = document.getElementById('result-content');
+            const resultTitle = document.getElementById('result-title-text');
+            
+            resultTitle.textContent = 'Message Revealed Successfully!';
+            resultSection.classList.remove('error');
+            
+            let content = '<div style="margin-bottom: 15px;">';
+            content += `<strong>Message Type:</strong> ${result.message_type.charAt(0).toUpperCase() + result.message_type.slice(1)}`;
+            
+            if (result.timestamp) {
+                content += `<br><strong>Created:</strong> ${new Date(result.timestamp * 1000).toLocaleString()}`;
+            }
+            
+            if (result.size) {
+                content += `<br><strong>Size:</strong> ${formatFileSize(result.size)}`;
+            }
+            content += '</div>';
+            
+            if (result.message_type === 'text') {
+                content += `
+                    <div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #e2e8f0; margin: 15px 0;">
+                        <h4 style="margin-bottom: 10px; color: #2d3748;"><i class="fas fa-quote-left"></i> Secret Message:</h4>
+                        <div style="font-family: monospace; white-space: pre-wrap; color: #4a5568; line-height: 1.6;">
+                            ${escapeHtml(result.content)}
+                        </div>
+                    </div>
+                    <button class="download-btn" onclick="downloadText('${escapeHtml(result.content)}', 'secret_message.txt')">
+                        <i class="fas fa-download"></i> Download as Text File
+                    </button>
+                `;
+            } else {
+                const fileData = result.content;
+                content += `
+                    <div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #e2e8f0; margin: 15px 0; text-align: center;">
+                        <h4 style="margin-bottom: 15px; color: #2d3748;">
+                            <i class="fas fa-file"></i> Secret ${result.message_type.charAt(0).toUpperCase() + result.message_type.slice(1)} File
+                        </h4>
+                        <p style="color: #718096; margin-bottom: 15px;">
+                            The secret file has been successfully extracted and is ready for download.
+                        </p>
+                        <button class="download-btn" onclick="downloadFile64('${fileData.data}', '${fileData.filename}')">
+                            <i class="fas fa-download"></i> Download ${fileData.filename}
+                        </button>
+                    </div>
+                `;
+            }
+            
+            resultContent.innerHTML = content;
+            resultSection.style.display = 'block';
+            
+            // Smooth scroll to result
+            resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function showSuccess(message) {
+            const resultSection = document.getElementById('result-section');
+            const resultContent = document.getElementById('result-content');
+            const resultTitle = document.getElementById('result-title-text');
+            
+            resultTitle.textContent = 'Success!';
+            resultSection.classList.remove('error');
+            resultContent.innerHTML = `
+                <p style="color: #2d3748; font-size: 1.1rem;">
+                    <i class="fas fa-check-circle" style="color: #48bb78; margin-right: 8px;"></i>
+                    ${message}
+                </p>
+            `;
+            resultSection.style.display = 'block';
+            resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function showError(message) {
+            const resultSection = document.getElementById('result-section');
+            const resultContent = document.getElementById('result-content');
+            const resultTitle = document.getElementById('result-title-text');
+            
+            resultTitle.textContent = 'Error!';
+            resultSection.classList.add('error');
+            resultContent.innerHTML = `
+                <p style="color: #2d3748; font-size: 1.1rem;">
+                    <i class="fas fa-exclamation-triangle" style="color: #f56565; margin-right: 8px;"></i>
+                    ${message}
+                </p>
+                <div style="margin-top: 15px; padding: 15px; background: rgba(245, 101, 101, 0.1); border-radius: 8px; font-size: 0.9rem; color: #2d3748;">
+                    <strong>Troubleshooting Tips:</strong><br>
+                    • Make sure you're using the correct passphrase<br>
+                    • Verify the file format is supported<br>
+                    • Check that the file actually contains hidden data<br>
+                    • Ensure the file hasn't been corrupted or modified
+                </div>
+            `;
+            resultSection.style.display = 'block';
+            resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function hideResult() {
+            document.getElementById('result-section').style.display = 'none';
+        }
+
+        function resetForms() {
+            document.getElementById('embed-form').reset();
+            document.getElementById('extract-form').reset();
+            
+            // Reset file uploads
+            document.querySelectorAll('.file-upload-btn').forEach(btn => {
+                btn.classList.remove('has-file');
+                btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> <span>Click to upload or drag and drop</span>';
+            });
+            
+            document.querySelectorAll('.file-info').forEach(info => {
+                info.style.display = 'none';
+            });
+            
+            document.querySelectorAll('.preview-area').forEach(preview => {
+                preview.style.display = 'none';
+            });
+            
+            // Reset dynamic inputs
+            document.getElementById('text-input').style.display = 'none';
+            document.getElementById('message-file-input').style.display = 'none';
+            
+            currentStep = 1;
+        }
+
+        // Utility functions
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        function downloadText(text, filename) {
+            const blob = new Blob([text], { type: 'text/plain' });
+            downloadFile(blob, filename);
+        }
+
+        function downloadFile64(base64Data, filename) {
+            try {
+                // Convert base64 to blob
+                const byteCharacters = atob(base64Data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray]);
+                
+                downloadFile(blob, filename);
+            } catch (error) {
+                showError('Failed to download file: ' + error.message);
+            }
+        }
+
+        // Add some interactive animations
+        function addParticleEffect(element) {
+            // Add particle effect for successful operations
+            const particles = document.createElement('div');
+            particles.style.position = 'fixed';
+            particles.style.top = '0';
+            particles.style.left = '0';
+            particles.style.width = '100%';
+            particles.style.height = '100%';
+            particles.style.pointerEvents = 'none';
+            particles.style.zIndex = '9999';
+            
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.style.position = 'absolute';
+                particle.style.width = '4px';
+                particle.style.height = '4px';
+                particle.style.background = '#48bb78';
+                particle.style.borderRadius = '50%';
+                particle.style.left = Math.random() * window.innerWidth + 'px';
+                particle.style.top = Math.random() * window.innerHeight + 'px';
+                particle.style.animation = 'particle-fade 2s ease-out forwards';
+                particles.appendChild(particle);
+            }
+            
+            document.body.appendChild(particles);
+            setTimeout(() => document.body.removeChild(particles), 2000);
+        }
+
+        // Add particle animation keyframes
+        const particleStyles = document.createElement('style');
+        particleStyles.textContent = `
+            @keyframes particle-fade {
+                0% {
+                    opacity: 1;
+                    transform: scale(1) translateY(0);
+                }
+                100% {
+                    opacity: 0;
+                    transform: scale(0) translateY(-100px);
+                }
+            }
+        `;
+        document.head.appendChild(particleStyles);
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + 1 = Switch to Embed mode
+            if ((e.ctrlKey || e.metaKey) && e.key === '1') {
+                e.preventDefault();
+                switchMode('embed');
+            }
+            // Ctrl/Cmd + 2 = Switch to Extract mode
+            if ((e.ctrlKey || e.metaKey) && e.key === '2') {
+                e.preventDefault();
+                switchMode('extract');
+            }
+        });
+
+        // Add loading progress for large files
+        function showUploadProgress(file) {
+            if (file.size > 10 * 1024 * 1024) { // Files larger than 10MB
+                // Show progress indicator for large files
+                console.log('Processing large file...', file.name);
+            }
+        }
+
+        // Initialize tooltips behavior
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add smooth transitions to all interactive elements
+            const style = document.createElement('style');
+            style.textContent = `
+                .form-control, .file-upload-btn, .submit-btn, .download-btn {
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                
+                .form-control:focus {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+                }
+                
+                .submit-btn:hover:not(:disabled) {
+                    transform: translateY(-2px);
+                    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+                }
+                
+                .result-section {
+                    animation: slideInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+            `;
+            document.head.appendChild(style);
+        });
+    </script>
+</body>
+</html>
