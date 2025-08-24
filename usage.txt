@@ -1,0 +1,165 @@
+# Steganography API - Complete Guide
+
+## Tổng quan
+API này cho phép bạn nhúng (embed) và trích xuất (extract) các thông điệp bí mật vào/từ các file media (hình ảnh, âm thanh, video).
+
+## Cài đặt và chạy
+
+```bash
+# Clone hoặc tạo project
+mkdir stego-app
+cd stego-app
+
+# Khởi tạo Go module
+go mod init stego-app
+
+# Copy các file code vào đúng thư mục
+# - main.go (root)
+# - handlers/embed.go
+# - handlers/extract.go  
+# - utils/steganography.go
+
+# Cài đặt dependencies
+go mod tidy
+
+# Chạy server
+go run main.go
+```
+
+## API Endpoints
+
+### 1. Embed - Nhúng thông điệp bí mật
+
+**POST** `/api/v1/embed`
+
+#### Form Fields:
+- `passphrase` (string, required): Mật khẩu để mã hóa
+- `media_type` (string, required): Loại file carrier ("image", "video", "audio")
+- `message_type` (string, required): Loại thông điệp ("text", "image", "audio", "video")
+- `text` (string): Nội dung text (nếu message_type = "text")
+
+#### Files:
+- `carrier_image`: File ảnh để nhúng vào (nếu media_type = "image")
+- `carrier_video`: File video để nhúng vào (nếu media_type = "video")  
+- `carrier_audio`: File audio để nhúng vào (nếu media_type = "audio")
+- `message_image`: File ảnh bí mật (nếu message_type = "image")
+- `message_audio`: File audio bí mật (nếu message_type = "audio")
+- `message_video`: File video bí mật (nếu message_type = "video")
+
+#### Response:
+Trả về file media đã nhúng thông điệp với headers phù hợp.
+
+### 2. Extract - Trích xuất thông điệp bí mật
+
+**POST** `/api/v1/extract`
+
+#### Form Fields:
+- `passphrase` (string, required): Mật khẩu để giải mã
+- `media_type` (string, required): Loại file media ("image", "video", "audio")
+
+#### Files:
+- `image`: File ảnh chứa dữ liệu (nếu media_type = "image")
+- `video`: File video chứa dữ liệu (nếu media_type = "video")
+- `audio`: File audio chứa dữ liệu (nếu media_type = "audio")
+
+#### Response:
+```json
+{
+  "success": true,
+  "message_type": "text|image|audio|video",
+  "content": "...",
+  "timestamp": 1234567890,
+  "size": 1024
+}
+```
+
+## Ví dụ sử dụng với cURL
+
+### Embed text vào image:
+```bash
+curl -X POST http://localhost:8080/api/v1/embed \
+  -F "passphrase=mySecretPassword" \
+  -F "media_type=image" \
+  -F "message_type=text" \
+  -F "text=This is my secret message!" \
+  -F "carrier_image=@photo.png" \
+  --output embedded_image.png
+```
+
+### Embed image vào video:
+```bash
+curl -X POST http://localhost:8080/api/v1/embed \
+  -F "passphrase=mySecretPassword" \
+  -F "media_type=video" \
+  -F "message_type=image" \
+  -F "carrier_video=@movie.mp4" \
+  -F "message_image=@secret.jpg" \
+  --output embedded_movie.mp4
+```
+
+### Embed audio vào audio:
+```bash
+curl -X POST http://localhost:8080/api/v1/embed \
+  -F "passphrase=mySecretPassword" \
+  -F "media_type=audio" \
+  -F "message_type=audio" \
+  -F "carrier_audio=@song.wav" \
+  -F "message_audio=@secret_voice.wav" \
+  --output embedded_song.wav
+```
+
+### Extract từ image:
+```bash
+curl -X POST http://localhost:8080/api/v1/extract \
+  -F "passphrase=mySecretPassword" \
+  -F "media_type=image" \
+  -F "image=@embedded_image.png"
+```
+
+### Extract từ video:
+```bash
+curl -X POST http://localhost:8080/api/v1/extract \
+  -F "passphrase=mySecretPassword" \
+  -F "media_type=video" \
+  -F "video=@embedded_movie.mp4"
+```
+
+## Các format được hỗ trợ
+
+### Carrier Media (File để nhúng vào):
+- **Image**: PNG, JPG, JPEG, BMP, TIFF
+- **Audio**: WAV, MP3, FLAC, AAC, OGG  
+- **Video**: MP4, AVI, MKV, MOV, WMV, FLV
+
+### Secret Message (Thông điệp bí mật):
+- **Text**: Văn bản thuần túy
+- **Image**: PNG, JPG, JPEG, BMP, GIF, TIFF
+- **Audio**: WAV, MP3, FLAC, AAC, OGG, M4A
+- **Video**: MP4, AVI, MKV, MOV, WMV, FLV, WEBM
+
+## Bảo mật
+
+- Sử dụng mã hóa AES-256-GCM
+- Key derivation với PBKDF2 và SHA-3
+- Salt ngẫu nhiên cho mỗi lần embed
+- Magic number để xác thực dữ liệu
+
+## Giới hạn
+
+- Kích thước tối đa: 10MB cho secret message
+- Chỉ hỗ trợ LSB steganography cho image và audio
+- Video embedding sử dụng phương pháp append (có thể cải thiện)
+
+## Error Handling
+
+API trả về các mã lỗi HTTP chuẩn:
+- `400 Bad Request`: Thiếu tham số hoặc format không hợp lệ
+- `500 Internal Server Error`: Lỗi xử lý hoặc file quá nhỏ
+
+## Web Interface
+
+Truy cập `http://localhost:8080` để sử dụng giao diện web (nếu có).
+
+## API Info
+
+GET `/api/v1/info` để xem thông tin chi tiết về API và các format được hỗ trợ.

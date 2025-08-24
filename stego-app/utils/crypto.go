@@ -5,7 +5,8 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
-	"fmt"
+
+	// "fmt"
 	"io"
 
 	"golang.org/x/crypto/pbkdf2"
@@ -33,20 +34,20 @@ func EncryptData(data, key []byte) ([]byte, error) {
 	return aesGCM.Seal(nonce, nonce, data, nil), nil
 }
 
-// DecryptData AES-GCM
-func DecryptData(encryptedData, key []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	aesGCM, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
-	nonceSize := aesGCM.NonceSize()
-	if len(encryptedData) < nonceSize {
-		return nil, fmt.Errorf("ciphertext too short")
-	}
-	nonce, ciphertext := encryptedData[:nonceSize], encryptedData[nonceSize:]
-	return aesGCM.Open(nil, nonce, ciphertext, nil)
-}
+// // DecryptData AES-GCM
+// func DecryptData(encryptedData, key []byte) ([]byte, error) {
+// 	block, err := aes.NewCipher(key)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	aesGCM, err := cipher.NewGCM(block)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	nonceSize := aesGCM.NonceSize()
+// 	if len(encryptedData) < nonceSize {
+// 		return nil, fmt.Errorf("ciphertext too short")
+// 	}
+// 	nonce, ciphertext := encryptedData[:nonceSize], encryptedData[nonceSize:]
+// 	return aesGCM.Open(nil, nonce, ciphertext, nil)
+// }
