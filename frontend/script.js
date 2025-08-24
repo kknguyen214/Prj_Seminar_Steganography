@@ -315,7 +315,7 @@ document.getElementById('extract-form').addEventListener('submit', async functio
                 `;
                 console.log("TEXT");
             } else if (messageType === 'image') {
-                const imageUrl = `data:image/png;base64,${content}`;
+                const imageUrl = `data:image/png;base64,${content.data}`;
                 contentHtml = `
                     <div class="form-group">
                         <label style="color: #60a5fa;">🖼️ Extracted Image Payload:</label>
@@ -328,7 +328,7 @@ document.getElementById('extract-form').addEventListener('submit', async functio
                     </a>
                 `;
             } else if (messageType === 'audio') {
-                const audioUrl = `data:audio/mpeg;base64,${content}`;
+                const audioUrl = `data:audio/mpeg;base64,${content.data}`;
                 contentHtml = `
                     <div class="form-group">
                         <label style="color: #60a5fa;">🎵 Extracted Audio Payload:</label>
@@ -346,7 +346,7 @@ document.getElementById('extract-form').addEventListener('submit', async functio
                     </a>
                 `;
             } else if (messageType === 'video') {
-                const videoUrl = `data:video/mp4;base64,${content}`;
+                const videoUrl = `data:video/mp4;base64,${content.data}`;
                 contentHtml = `
                     <div class="form-group">
                         <label style="color: #60a5fa;">🎬 Extracted Video Payload:</label>
