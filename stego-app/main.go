@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"net/http"
 	"stego-app/handlers"
 
 	"github.com/gin-gonic/gin"
@@ -9,24 +9,19 @@ import (
 
 func main() {
 	r := gin.Default()
-	r.MaxMultipartMemory = 32 << 20
 
-	// CORS
-	r.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "POST, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
+	// API routes
+	r.POST("/api/embed", handlers.EmbedHandler)
+	r.POST("/api/extract", handlers.ExtractHandler)
+	r.GET("/api/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	r.POST("/embed", handlers.EmbedHandler)
-	r.POST("/extract", handlers.ExtractHandler)
-	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+	// Serve static files (frontend)
+	r.Static("/public", "./public") // dùng /public thay vì /*filepath
+	r.NoRoute(func(c *gin.Context) {
+		c.File("./public/index.html") // fallback
+	})
 
-	fmt.Println("Server running on :8080")
 	r.Run(":8080")
 }
