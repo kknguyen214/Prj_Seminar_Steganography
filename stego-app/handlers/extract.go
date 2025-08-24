@@ -1,12 +1,16 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"image"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"path/filepath"
+	"strings"
 
-	"stego-app/models"
 	"stego-app/utils"
 
 	"github.com/gin-gonic/gin"
@@ -14,152 +18,261 @@ import (
 
 type ExtractRequest struct {
 	Image      image.Image
+	VideoData  []byte
+	AudioData  []byte
 	Passphrase string
+	MediaType  string // "image", "video", "audio"
 }
 
+type ExtractResponse struct {
+	Success     bool        `json:"success"`
+	Message     string      `json:"message,omitempty"`
+	MessageType string      `json:"message_type,omitempty"`
+	Content     interface{} `json:"content,omitempty"`
+	Timestamp   int64       `json:"timestamp,omitempty"`
+	Size        int         `json:"size,omitempty"`
+}
+
+// ExtractHandler main API handler for extracting hidden messages
 func ExtractHandler(c *gin.Context) {
-	// Parse request
 	req, err := parseExtractRequest(c)
 	if err != nil {
-		respondError(c, http.StatusBadRequest, err.Error())
+		respondExtractError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// Process extraction
-	result, err := processExtraction(req)
+	result, err := processExtract(req)
 	if err != nil {
-		respondError(c, http.StatusBadRequest, err.Error())
+		respondExtractError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	// Return success response
-	c.JSON(http.StatusOK, models.Response{
-		Success: true,
-		Data:    result,
-	})
+	c.JSON(http.StatusOK, result)
 }
 
-// parseExtractRequest parse và validate request
+// parseExtractRequest parses the extraction request
 func parseExtractRequest(c *gin.Context) (*ExtractRequest, error) {
-	// Parse image file
-	img, err := parseImageFromForm(c)
+	form, err := c.MultipartForm()
 	if err != nil {
-		return nil, err
+		return nil, errors.New("failed to parse multipart form")
 	}
 
-	// Get passphrase
-	passphrase := c.PostForm("passphrase")
-	if passphrase == "" {
-		return nil, errors.New("passphrase required")
-	}
-
-	return &ExtractRequest{
-		Image:      img,
-		Passphrase: passphrase,
-	}, nil
-}
-
-// parseImageFromForm parse image từ form data
-func parseImageFromForm(c *gin.Context) (image.Image, error) {
-	file, err := c.FormFile("image")
-	if err != nil {
-		return nil, errors.New("no image provided")
-	}
-
-	// Validate image format
-	format := utils.GetImageFormat(file.Filename)
-	if format == "" {
-		return nil, errors.New("unsupported image format")
-	}
-
-	// Open and decode image
-	src, err := file.Open()
-	if err != nil {
-		return nil, errors.New("failed to open image file")
-	}
-	defer src.Close()
-
-	img, _, err := image.Decode(src)
-	if err != nil {
-		return nil, errors.New("invalid image format")
-	}
-
-	return img, nil
-}
-
-// processExtraction xử lý toàn bộ quá trình extract
-func processExtraction(req *ExtractRequest) (*models.ExtractedData, error) {
-	// Extract raw data từ image
-	rawData, err := extractRawData(req.Image)
-	if err != nil {
-		return nil, err
-	}
-
-	// Decrypt data
-	decryptedData, err := decryptExtractedData(rawData, req.Passphrase)
-	if err != nil {
-		return nil, err
-	}
-
-	// Parse message data
-	extractedData, err := parseExtractedMessage(decryptedData)
-	if err != nil {
-		return nil, err
-	}
-
-	return extractedData, nil
-}
-
-// extractRawData extract dữ liệu thô từ image
-func extractRawData(img image.Image) ([]byte, error) {
-	data, err := utils.ExtractDataFromImage(img)
-	if err != nil {
-		return nil, errors.New("failed to extract data from image")
-	}
-
-	if len(data) < 16 {
-		return nil, errors.New("invalid embedded data")
-	}
-
-	return data, nil
-}
-
-// decryptExtractedData decrypt dữ liệu đã extract
-func decryptExtractedData(data []byte, passphrase string) ([]byte, error) {
-	// Tách salt và encrypted data
-	salt := data[:16]
-	encrypted := data[16:]
-
-	// Generate key và decrypt
-	key := utils.GenerateKey(passphrase, salt)
-	decrypted, err := utils.DecryptData(encrypted, key)
-	if err != nil {
-		return nil, errors.New("failed to decrypt data - wrong passphrase?")
-	}
-
-	return decrypted, nil
-}
-
-// parseExtractedMessage parse JSON message thành struct
-func parseExtractedMessage(data []byte) (*models.ExtractedData, error) {
-	var message map[string]interface{}
-	if err := json.Unmarshal(data, &message); err != nil {
-		return nil, errors.New("invalid message format")
+	req := &ExtractRequest{
+		Passphrase: c.PostForm("passphrase"),
+		MediaType:  c.PostForm("media_type"),
 	}
 
 	// Validate required fields
-	messageType, ok := message["type"].(string)
-	if !ok {
-		return nil, errors.New("missing or invalid message type")
+	if req.Passphrase == "" {
+		return nil, errors.New("passphrase is required")
+	}
+	if req.MediaType == "" {
+		return nil, errors.New("media_type is required (image/video/audio)")
 	}
 
-	content, ok := message["content"].(string)
-	if !ok {
-		return nil, errors.New("missing or invalid content")
+	// Parse media file containing hidden data
+	if err := parseExtractMedia(form, req); err != nil {
+		return nil, err
 	}
 
-	return &models.ExtractedData{
+	return req, nil
+}
+
+func parseExtractMedia(form *multipart.Form, req *ExtractRequest) error {
+	var files []*multipart.FileHeader
+	var fieldName string
+
+	switch req.MediaType {
+	case "image":
+		files = form.File["image"]
+		fieldName = "image"
+	case "video":
+		files = form.File["video"]
+		fieldName = "video"
+	case "audio":
+		files = form.File["audio"]
+		fieldName = "audio"
+	default:
+		return errors.New("invalid media_type. Must be: image, video, or audio")
+	}
+
+	if len(files) == 0 {
+		return errors.New("no " + fieldName + " file provided")
+	}
+
+	file := files[0]
+
+	// Validate file format
+	if !isValidExtractFormat(file.Filename, req.MediaType) {
+		return errors.New("unsupported " + req.MediaType + " format")
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return errors.New("failed to open " + fieldName + " file")
+	}
+	defer src.Close()
+
+	switch req.MediaType {
+	case "image":
+		img, _, err := image.Decode(src)
+		if err != nil {
+			return errors.New("invalid image format or corrupted file")
+		}
+		req.Image = img
+	case "video":
+		data, err := io.ReadAll(src)
+		if err != nil {
+			return errors.New("failed to read video file")
+		}
+		req.VideoData = data
+	case "audio":
+		data, err := io.ReadAll(src)
+		if err != nil {
+			return errors.New("failed to read audio file")
+		}
+		req.AudioData = data
+	}
+
+	return nil
+}
+
+// processExtract handles the complete extraction process
+func processExtract(req *ExtractRequest) (*ExtractResponse, error) {
+	// Extract raw data from media
+	var rawData []byte
+	var err error
+
+	switch req.MediaType {
+	case "image":
+		rawData, err = utils.ExtractDataFromImage(req.Image)
+	case "video":
+		rawData, err = utils.ExtractDataFromVideo(req.VideoData)
+	case "audio":
+		rawData, err = utils.ExtractDataFromAudio(req.AudioData)
+	default:
+		return nil, errors.New("invalid media type")
+	}
+
+	if err != nil {
+		return nil, errors.New("failed to extract data from " + req.MediaType + ": " + err.Error())
+	}
+
+	// Check minimum data length (salt + some encrypted data)
+	if len(rawData) < 32 { // 16 bytes salt + minimum encrypted data
+		return nil, errors.New("no hidden data found or file is corrupted")
+	}
+
+	// Extract salt and encrypted data
+	salt := rawData[:16]
+	encrypted := rawData[16:]
+
+	// Generate decryption key
+	key := utils.GenerateKey(req.Passphrase, salt)
+
+	// Decrypt the data
+	decrypted, err := utils.DecryptData(encrypted, key)
+	if err != nil {
+		return nil, errors.New("invalid passphrase or corrupted encrypted data")
+	}
+
+	// Parse JSON message data
+	var messageData map[string]interface{}
+	if err := json.Unmarshal(decrypted, &messageData); err != nil {
+		return nil, errors.New("corrupted message data - invalid JSON format")
+	}
+
+	// Extract message type
+	messageType, ok := messageData["type"].(string)
+	if !ok {
+		return nil, errors.New("invalid message format - missing or invalid type")
+	}
+
+	// Extract content
+	content, ok := messageData["content"].(string)
+	if !ok {
+		return nil, errors.New("invalid message format - missing or invalid content")
+	}
+
+	// Create response
+	response := &ExtractResponse{
+		Success:     true,
 		MessageType: messageType,
-		Content:     content,
-	}, nil
+	}
+
+	// Extract optional fields
+	if timestamp, ok := messageData["timestamp"].(float64); ok {
+		response.Timestamp = int64(timestamp)
+	}
+	if size, ok := messageData["size"].(float64); ok {
+		response.Size = int(size)
+	}
+
+	// Process content based on message type
+	switch messageType {
+	case "text":
+		response.Content = content
+
+	case "audio":
+		decoded, err := base64.StdEncoding.DecodeString(content)
+		if err != nil {
+			return nil, errors.New("failed to decode audio content")
+		}
+		response.Content = map[string]interface{}{
+			"data":     base64.StdEncoding.EncodeToString(decoded),
+			"filename": "extracted_audio.wav",
+			"size":     len(decoded),
+		}
+
+	case "image":
+		decoded, err := base64.StdEncoding.DecodeString(content)
+		if err != nil {
+			return nil, errors.New("failed to decode image content")
+		}
+		response.Content = map[string]interface{}{
+			"data":     base64.StdEncoding.EncodeToString(decoded),
+			"filename": "extracted_image.png",
+			"size":     len(decoded),
+		}
+
+	case "video":
+		decoded, err := base64.StdEncoding.DecodeString(content)
+		if err != nil {
+			return nil, errors.New("failed to decode video content")
+		}
+		response.Content = map[string]interface{}{
+			"data":     base64.StdEncoding.EncodeToString(decoded),
+			"filename": "extracted_video.mp4",
+			"size":     len(decoded),
+		}
+
+	default:
+		return nil, errors.New("unknown message type: " + messageType)
+	}
+
+	return response, nil
+}
+
+// isValidExtractFormat validates file format for extraction
+func isValidExtractFormat(filename, mediaType string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+
+	switch mediaType {
+	case "image":
+		return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp" || ext == ".tiff"
+	case "video":
+		return ext == ".mp4" || ext == ".avi" || ext == ".mkv" || ext == ".mov" || ext == ".wmv" || ext == ".flv"
+	case "audio":
+		return ext == ".wav" || ext == ".mp3" || ext == ".flac" || ext == ".aac" || ext == ".ogg"
+	}
+
+	return false
+}
+
+// respondExtractError helper function for extraction error responses
+func respondExtractError(c *gin.Context, statusCode int, message string) {
+	c.JSON(statusCode, ExtractResponse{
+		Success: false,
+		Message: message,
+	})
 }
