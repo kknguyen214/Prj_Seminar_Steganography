@@ -346,15 +346,24 @@
             </div>
 
             <form id="embed-form">
-                <div class="form-grid">
+                 <div class="form-grid">
                     <div class="form-section">
                         <h3>Host File (Container)</h3>
                         <div class="form-group">
+                            <label>Media Type *</label>
+                            <select class="form-control" id="host-media-type" required onchange="updateHostFileInput()">
+                                <option value="">Select media type</option>
+                                <option value="image">🖼️ Image</option>
+                                <option value="audio">🎵 Audio</option>
+                                <option value="video">🎬 Video</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="host-file-group" style="display: none;">
                             <label>Select Host File *</label>
                             <div class="file-input">
-                                <input type="file" id="host-file" accept="image/*,audio/*,video/*" required>
-                                <label for="host-file" class="file-input-label">
-                                    📁 Choose Image, Audio, or Video File
+                                <input type="file" id="host-file" accept="" required disabled>
+                                <label for="host-file" class="file-input-label" id="host-file-label">
+                                    📁 Choose File
                                     <div id="host-file-name"></div>
                                 </label>
                             </div>

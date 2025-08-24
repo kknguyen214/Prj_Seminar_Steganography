@@ -10,6 +10,40 @@ function switchTab(tabName) {
     document.getElementById(tabName + '-tab').classList.add('active');
 }
 
+// Update host file input based on selected media type
+function updateHostFileInput() {
+    const mediaType = document.getElementById('host-media-type').value;
+    const fileInput = document.getElementById('host-file');
+    const fileLabel = document.getElementById('host-file-label');
+    const fileName = document.getElementById('host-file-name');
+    const fileGroup = document.getElementById('host-file-group');
+    
+    // Clear previous selection
+    fileInput.value = '';
+    fileName.innerHTML = '';
+    fileLabel.classList.remove('has-file');
+    
+    if (mediaType === 'image') {
+        fileGroup.style.display = 'block';
+        fileInput.accept = 'image/*';
+        fileInput.disabled = false;
+        fileLabel.innerHTML = '🖼️ Choose Image File<div id="host-file-name"></div>';
+    } else if (mediaType === 'audio') {
+        fileGroup.style.display = 'block';
+        fileInput.accept = 'audio/*';
+        fileInput.disabled = false;
+        fileLabel.innerHTML = '🎵 Choose Audio File<div id="host-file-name"></div>';
+    } else if (mediaType === 'video') {
+        fileGroup.style.display = 'block';
+        fileInput.disabled = false;
+        fileLabel.innerHTML = '🎬 Choose Video File<div id="host-file-name"></div>';
+    } else {
+        fileGroup.style.display = 'none';
+        fileInput.accept = '';
+        fileInput.disabled = true;
+    }
+}
+
 // Toggle message input based on type
 function toggleMessageInput() {
     const messageType = document.getElementById('message-type').value;
@@ -68,13 +102,23 @@ document.getElementById('embed-form').addEventListener('submit', async function(
         const formData = new FormData();
         
         // Host file
+        const mediaType = document.getElementById('host-media-type').value;
+        formData.append('media_type', mediaType);
         const hostFile = document.getElementById('host-file').files[0];
-        formData.append('image', hostFile);
+        if (mediaType === 'image') {
+            formData.append('image', hostFile);
+        } else if (mediaType === 'audio') {
+            formData.append('audio', hostFile);
+        } else if (mediaType === 'video') {
+            formData.append('video', hostFile);
+        } else {
+            throw new Error('Please select a media type');
+        }
         
         // Message type and password
         const messageType = document.getElementById('message-type').value;
         const password = document.getElementById('embed-password').value;
-        
+
         formData.append('message_type', messageType);
         formData.append('passphrase', password);
         
@@ -95,7 +139,7 @@ document.getElementById('embed-form').addEventListener('submit', async function(
             }
             formData.append('audio', audioFile);
         }
-        
+
         const response = await fetch(`${API_BASE}/embed`, {
             method: 'POST',
             body: formData
