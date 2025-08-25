@@ -197,18 +197,40 @@ document.getElementById('embed-form').addEventListener('submit', async function(
             const downloadFileName = `steganography_${Date.now()}.${fileExtension}`;
             
             let previewHtml = '';
-            if (blob.type.startsWith('image/')) {
+            const blobType = blob.type;
+
+            if (blobType.startsWith('image/')) {
                 previewHtml = `
                     <div class="form-group">
-                        <label style="color: #60a5fa;">🖼️ Steganographic Container:</label>
-                        <img src="${url}" class="result-image" alt="Steganographic Container" loading="lazy">
+                        <label style="color: #60a5fa;">🖼️ Container Preview:</label>
+                        <img src="${url}" class="result-preview" alt="Steganographic Container" loading="lazy">
                     </div>`;
+            } else if (blobType.startsWith('audio/')) {
+                previewHtml = `
+                    <div class="form-group">
+                        <label style="color: #60a5fa;">🎵 Container Preview:</label>
+                        <audio controls class="result-preview" src="${url}"></audio>
+                    </div>`;
+            } else if (blobType.startsWith('video/')) {
+                previewHtml = `
+                    <div class="form-group">
+                        <label style="color: #60a5fa;">🎬 Container Preview:</label>
+                        <video controls class="result-preview" src="${url}"></video>
+                    </div>`;
+            } else if (blobType === 'application/pdf') {
+                previewHtml = `
+                    <div class="form-group">
+                        <label style="color: #60a5fa;">📄 Container Preview:</label>
+                        <iframe src="${url}" class="result-preview-iframe"></iframe>
+                    </div>`;
+            } else {
+                 previewHtml = `<p style="color: #94a3b8;">Preview is not available for this file type (${blobType}).</p>`;
             }
 
             result.innerHTML = `
                 <div class="result-container">
                     <h4>✅ Embedding Successful</h4>
-                    <p style="color: #cbd5e1; margin-bottom: 20px;">Data has been successfully embedded using advanced steganographic algorithms. The container appears identical to the original while securely concealing your payload.</p>
+                    <p style="color: #cbd5e1; margin-bottom: 20px;">Data has been successfully embedded. The container file is ready for download.</p>
                     
                     ${previewHtml}
                     
@@ -217,7 +239,6 @@ document.getElementById('embed-form').addEventListener('submit', async function(
                         <p><strong>Container Size:</strong> ${(blob.size / 1024 / 1024).toFixed(2)} MB</p>
                         <p><strong>Payload Type:</strong> ${messageType.toUpperCase()}</p>
                         <p><strong>Status:</strong> <span style="color: #34d399; font-weight: bold;">🔐 Data Successfully Concealed</span></p>
-                        <p><strong>Security:</strong> <span style="color: #a78bfa;">AES Encrypted</span></p>
                     </div>
                     
                     <div class="download-section">
@@ -316,97 +337,66 @@ document.getElementById('extract-form').addEventListener('submit', async functio
             let downloadButton = '';
             
             if (messageType === 'text') {
-                // console.log("JSHDJHJDSH");
+                const textContent = content.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                 contentHtml = `
                     <div class="form-group">
                         <label style="color: #60a5fa;">📝 Extracted Text Payload:</label>
-                        <textarea class="form-control" rows="6" readonly style="background: rgba(30, 41, 59, 0.8); color: #e2e8f0;">${content}</textarea>
+                        <textarea class="form-control" rows="6" readonly style="background: rgba(30, 41, 59, 0.8); color: #e2e8f0;">${textContent}</textarea>
                     </div>
                 `;
-                
-                // console.log("OKOK");
-                // Create text download
                 const textBlob = new Blob([content], { type: 'text/plain' });
                 const textUrl = URL.createObjectURL(textBlob);
-                // console.log("OKADJHJJDOK");
-                downloadButton = `
-                    <a href="${textUrl}" download="extracted_text_${Date.now()}.txt" class="btn btn-secondary">
-                        💾 Download Text
-                    </a>
-                `;
-                console.log("TEXT");
+                downloadButton = `<a href="${textUrl}" download="extracted_text.txt" class="btn btn-secondary">💾 Download Text</a>`;
+
             } else if (messageType === 'image') {
                 const imageUrl = `data:image/png;base64,${content.data}`;
                 contentHtml = `
                     <div class="form-group">
                         <label style="color: #60a5fa;">🖼️ Extracted Image Payload:</label>
-                        <img src="${imageUrl}" class="result-image" alt="Extracted Image" loading="lazy">
+                        <img src="${imageUrl}" class="result-preview" alt="Extracted Image" loading="lazy">
                     </div>
                 `;
-                downloadButton = `
-                    <a href="${imageUrl}" download="extracted_image_${Date.now()}.png" class="btn btn-secondary">
-                        💾 Download Image
-                    </a>
-                `;
+                downloadButton = `<a href="${imageUrl}" download="${content.filename || 'extracted_image.png'}" class="btn btn-secondary">💾 Download Image</a>`;
+
             } else if (messageType === 'audio') {
-                const audioUrl = `data:audio/mpeg;base64,${content.data}`;
+                const audioUrl = `data:audio/wav;base64,${content.data}`; // Mặc định là wav, có thể tùy chỉnh
                 contentHtml = `
                     <div class="form-group">
                         <label style="color: #60a5fa;">🎵 Extracted Audio Payload:</label>
-                        <audio controls class="result-audio" style="width: 100%; margin-top: 12px;">
-                            <source src="${audioUrl}" type="audio/mpeg">
-                            <source src="${audioUrl}" type="audio/wav">
-                            <source src="${audioUrl}" type="audio/ogg">
-                            Your browser does not support the audio element.
-                        </audio>
+                        <audio controls class="result-preview" src="${audioUrl}"></audio>
                     </div>
                 `;
-                downloadButton = `
-                    <a href="${audioUrl}" download="extracted_audio_${Date.now()}.mp3" class="btn btn-secondary">
-                        💾 Download Audio
-                    </a>
-                `;
+                downloadButton = `<a href="${audioUrl}" download="${content.filename || 'extracted_audio.wav'}" class="btn btn-secondary">💾 Download Audio</a>`;
+
             } else if (messageType === 'video') {
-                const videoUrl = `data:video/mp4;base64,${content.data}`;
+                const videoUrl = `data:video/mp4;base64,${content.data}`; // Mặc định là mp4
                 contentHtml = `
                     <div class="form-group">
                         <label style="color: #60a5fa;">🎬 Extracted Video Payload:</label>
-                        <video controls class="result-video" style="width: 100%; margin-top: 12px;">
-                            <source src="${videoUrl}" type="video/mp4">
-                            <source src="${videoUrl}" type="video/webm">
-                            <source src="${videoUrl}" type="video/ogg">
-                            Your browser does not support the video element.
-                        </video>
+                        <video controls class="result-preview" src="${videoUrl}"></video>
                     </div>
                 `;
-                downloadButton = `
-                    <a href="${videoUrl}" download="extracted_video_${Date.now()}.mp4" class="btn btn-secondary">
-                        💾 Download Video
-                    </a>
-                `;
+                downloadButton = `<a href="${videoUrl}" download="${content.filename || 'extracted_video.mp4'}" class="btn btn-secondary">💾 Download Video</a>`;
+
             } else if (messageType === 'pdf') {
                 const pdfUrl = `data:application/pdf;base64,${content.data}`;
                 contentHtml = `
                     <div class="form-group">
                         <label style="color: #60a5fa;">📄 Extracted PDF Payload:</label>
-                        <p style="color: #94a3b8; margin-top: 8px;">PDF file recovered. Click to download.</p>
+                        <iframe src="${pdfUrl}" class="result-preview-iframe"></iframe>
                     </div>`;
-                downloadButton = `
-                    <a href="${pdfUrl}" download="extracted_pdf_${Date.now()}.pdf" class="btn btn-secondary">
-                        💾 Download PDF
-                    </a>`;
+                downloadButton = `<a href="${pdfUrl}" download="${content.filename || 'extracted_pdf.pdf'}" class="btn btn-secondary">💾 Download PDF</a>`;
             }
             
             result.innerHTML = `
                 <div class="result-container">
                     <h4>🔓 Extraction Successful</h4>
-                    <p style="color: #cbd5e1; margin-bottom: 20px;">Steganographic analysis complete. Hidden payload successfully recovered and decrypted.</p>
+                    <p style="color: #cbd5e1; margin-bottom: 20px;">Hidden payload successfully recovered and decrypted.</p>
                     
                     <div class="file-info">
                         <p><strong>Container:</strong> ${file.name}</p>
                         <p><strong>Payload Type:</strong> ${messageType.toUpperCase()}</p>
-                        <p><strong>Extraction Status:</strong> <span style="color: #34d399; font-weight: bold;">✅ Success</span></p>
-                        <p><strong>Security:</strong> <span style="color: #a78bfa;">AES Decrypted</span></p>
+                        <p><strong>Status:</strong> <span style="color: #34d399; font-weight: bold;">✅ Success</span></p>
                     </div>
                     
                     ${contentHtml}
