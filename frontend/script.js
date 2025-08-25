@@ -23,6 +23,7 @@ function updateHostFileInput() {
     const fileLabel = document.getElementById('host-file-label');
     const fileName = document.getElementById('host-file-name');
     const fileGroup = document.getElementById('host-file-group');
+    const labelText = document.getElementById('host-file-label-text');
     
     // Clear previous selection
     fileInput.value = '';
@@ -52,7 +53,7 @@ function updateHostFileInput() {
         fileGroup.style.display = 'block';
         fileInput.accept = config.accept;
         fileInput.disabled = false;
-        fileLabel.innerHTML = `${config.label}<div id="host-file-name"></div>`;
+        labelText.innerHTML = config.label;
     } else {
         fileGroup.style.display = 'none';
         fileInput.accept = '';
