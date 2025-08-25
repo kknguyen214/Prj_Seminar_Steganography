@@ -42,6 +42,7 @@
                                 <option value="image">🖼️ Image Container</option>
                                 <option value="audio">🎵 Audio Container</option>
                                 <option value="video">🎬 Video Container</option>
+                                <option value="pdf">📄 PDF Container</option>
                             </select>
                         </div>
                         <div class="form-group" id="host-file-group" style="display: none;">
@@ -66,6 +67,7 @@
                                 <option value="image">🖼️ Image Payload</option>
                                 <option value="audio">🎵 Audio Payload</option>
                                 <option value="video">🎬 Video Payload</option>
+                                <option value="pdf">📄 PDF Payload</option>
                             </select>
                         </div>
 
@@ -103,6 +105,17 @@
                                 <label for="secret-video" class="file-input-label">
                                     🎬 Select Video File
                                     <div id="secret-video-name"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group" id="pdf-input" style="display: none;">
+                            <label>PDF Payload</label>
+                            <div class="file-input">
+                                <input type="file" id="secret-pdf" accept=".pdf,application/pdf">
+                                <label for="secret-pdf" class="file-input-label">
+                                    📄 Select PDF File
+                                    <div id="secret-pdf-name"></div>
                                 </label>
                             </div>
                         </div>
@@ -148,6 +161,7 @@
                             <option value="image">🖼️ Image</option>
                             <option value="audio">🎵 Audio</option>
                             <option value="video">🎬 Video</option>
+                            <option value="pdf">📄 PDF</option>
                         </select>
                     </div>
 
@@ -183,6 +197,18 @@
                             <label for="extract-video-file" class="file-input-label">
                                 🎬 Select Video File
                                 <div id="extract-video-file-name"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- PDF input -->
+                    <div class="form-group" id="extract-pdf-input" style="display: none;">
+                        <label>PDF Container</label>
+                        <div class="file-input">
+                            <input type="file" id="extract-pdf-file" accept=".pdf,application/pdf">
+                            <label for="extract-pdf-file" class="file-input-label">
+                                📄 Select PDF File
+                                <div id="extract-pdf-file-name"></div>
                             </label>
                         </div>
                     </div>

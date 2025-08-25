@@ -45,6 +45,11 @@ function updateHostFileInput() {
             accept: 'video/*',
             label: '🎬 Select Video Container',
             display: true
+        },
+        'pdf': {
+            accept: '.pdf,application/pdf',
+            label: '📄 Select PDF Container',
+            display: true
         }
     };
 
@@ -66,7 +71,7 @@ function updateMessageInputs() {
     const messageType = document.getElementById('message-type').value;
     
     // Hide all inputs
-    const inputGroups = ['text-input', 'image-input', 'audio-input', 'video-input'];
+    const inputGroups = ['text-input', 'image-input', 'audio-input', 'video-input', 'pdf-input'];
     inputGroups.forEach(groupId => {
         document.getElementById(groupId).style.display = 'none';
     });
@@ -107,10 +112,11 @@ setupFileInput('host-file', 'host-file-name');
 setupFileInput('secret-image', 'secret-image-name');
 setupFileInput('secret-audio', 'secret-audio-name');
 setupFileInput('secret-video', 'secret-video-name');
+setupFileInput('secret-pdf', 'secret-pdf-name'); 
 setupFileInput('extract-image-file', 'extract-image-file-name');
 setupFileInput('extract-audio-file', 'extract-audio-file-name');
 setupFileInput('extract-video-file', 'extract-video-file-name');
-
+setupFileInput('extract-pdf-file', 'extract-pdf-file-name');
 
 // Enhanced embed form handler
 document.getElementById('embed-form').addEventListener('submit', async function(e) {
@@ -138,7 +144,8 @@ document.getElementById('embed-form').addEventListener('submit', async function(
         const hostFileFieldMap = {
             'image': 'carrier_image',
             'audio': 'carrier_audio',
-            'video': 'carrier_video'
+            'video': 'carrier_video',
+            'pdf': 'carrier_pdf'
         };
         formData.append(hostFileFieldMap[mediaType], hostFile);
         
@@ -169,6 +176,10 @@ document.getElementById('embed-form').addEventListener('submit', async function(
             const videoFile = document.getElementById('secret-video').files[0];
             if (!videoFile) throw new Error('Please select a video file');
             formData.append('message_video', videoFile);
+        } else if (messageType === 'pdf') {
+            const pdfFile = document.getElementById('secret-pdf').files[0];
+            if (!pdfFile) throw new Error('Please select a PDF file');
+            formData.append('message_pdf', pdfFile);
         }
 
         const response = await fetch(`${API_BASE}/embed`, {
@@ -185,15 +196,21 @@ document.getElementById('embed-form').addEventListener('submit', async function(
             const fileExtension = originalName.split('.').pop().toLowerCase();
             const downloadFileName = `steganography_${Date.now()}.${fileExtension}`;
             
+            let previewHtml = '';
+            if (blob.type.startsWith('image/')) {
+                previewHtml = `
+                    <div class="form-group">
+                        <label style="color: #60a5fa;">🖼️ Steganographic Container:</label>
+                        <img src="${url}" class="result-image" alt="Steganographic Container" loading="lazy">
+                    </div>`;
+            }
+
             result.innerHTML = `
                 <div class="result-container">
                     <h4>✅ Embedding Successful</h4>
                     <p style="color: #cbd5e1; margin-bottom: 20px;">Data has been successfully embedded using advanced steganographic algorithms. The container appears identical to the original while securely concealing your payload.</p>
                     
-                    <div class="form-group">
-                        <label style="color: #60a5fa;">🖼️ Steganographic Container:</label>
-                        <img src="${url}" class="result-image" alt="Steganographic Container" loading="lazy">
-                    </div>
+                    ${previewHtml}
                     
                     <div class="file-info">
                         <p><strong>Original File:</strong> ${originalName}</p>
@@ -262,6 +279,8 @@ document.getElementById('extract-form').addEventListener('submit', async functio
             file = document.getElementById('extract-audio-file').files[0];
         } else if (mediaType === 'video') {
             file = document.getElementById('extract-video-file').files[0];
+        } else if (mediaType === 'pdf') {
+            file = document.getElementById('extract-pdf-file').files[0];
         }
 
         if (!file) throw new Error('Please select a container file');
@@ -274,7 +293,8 @@ document.getElementById('extract-form').addEventListener('submit', async functio
         const hostFileFieldMap = {
             'image': 'image',
             'audio': 'audio',
-            'video': 'video'
+            'video': 'video',
+            'pdf': 'pdf'
         };
         formData.append(hostFileFieldMap[mediaType], file);
         
@@ -364,6 +384,17 @@ document.getElementById('extract-form').addEventListener('submit', async functio
                         💾 Download Video
                     </a>
                 `;
+            } else if (messageType === 'pdf') {
+                const pdfUrl = `data:application/pdf;base64,${content.data}`;
+                contentHtml = `
+                    <div class="form-group">
+                        <label style="color: #60a5fa;">📄 Extracted PDF Payload:</label>
+                        <p style="color: #94a3b8; margin-top: 8px;">PDF file recovered. Click to download.</p>
+                    </div>`;
+                downloadButton = `
+                    <a href="${pdfUrl}" download="extracted_pdf_${Date.now()}.pdf" class="btn btn-secondary">
+                        💾 Download PDF
+                    </a>`;
             }
             
             result.innerHTML = `
@@ -442,7 +473,7 @@ document.addEventListener('keydown', function(e) {
 
 function updateExtractInputs() {
     const mediaType = document.getElementById('extract-media-type').value;
-    const inputGroups = ['extract-image-input', 'extract-audio-input', 'extract-video-input'];
+    const inputGroups = ['extract-image-input', 'extract-audio-input', 'extract-video-input', 'extract-pdf-input'];
 
     inputGroups.forEach(groupId => {
         const el = document.getElementById(groupId);
