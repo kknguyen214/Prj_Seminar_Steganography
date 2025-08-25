@@ -318,7 +318,7 @@ func ExtractDataFromVideo(videoData []byte) ([]byte, error) {
 	return nil, errors.New("no embedded data found in video")
 }
 
-// EmbedDataInAudio embeds data into audio file using LSB in audio samples
+// EmbedDataInAudio embeds data into audio file
 func EmbedDataInAudio(audioData []byte, data []byte) ([]byte, error) {
 	if len(audioData) == 0 {
 		return nil, errors.New("audio data cannot be empty")
@@ -328,107 +328,46 @@ func EmbedDataInAudio(audioData []byte, data []byte) ([]byte, error) {
 		return nil, errors.New("data to embed cannot be empty")
 	}
 
-	// Basic WAV file validation
-	if len(audioData) < 44 { // Minimum WAV header size
-		return nil, errors.New("audio file too small or invalid format")
+	if len(data) > MaxDataSize {
+		return nil, fmt.Errorf("data too large: %d bytes, max allowed: %d bytes", len(data), MaxDataSize)
 	}
 
-	// Check for WAV header
-	if string(audioData[:4]) != "RIFF" || string(audioData[8:12]) != "WAVE" {
-		return nil, errors.New("unsupported audio format - only WAV files supported for LSB embedding")
-	}
-
-	// Find data chunk
-	headerSize := findWavDataChunk(audioData)
-	if headerSize == -1 {
-		return nil, errors.New("invalid WAV file - no data chunk found")
-	}
-
-	audioSamples := audioData[headerSize:]
+	// Phương pháp đơn giản: nối dữ liệu vào cuối file, giống như video
 	dataWithHeader := prepareDataWithHeader(data)
 
-	// Calculate capacity (1 bit per audio sample byte)
-	capacity := len(audioSamples) / 8 // 1 bit per byte = 1/8 capacity
-
-	if len(dataWithHeader) > capacity {
-		return nil, fmt.Errorf("audio file too small to embed data: need %d bytes, have %d bytes capacity",
-			len(dataWithHeader), capacity)
-	}
-
-	// Create new audio data
-	result := make([]byte, len(audioData))
+	// Tạo dữ liệu audio mới bằng cách nối thêm dữ liệu của chúng ta
+	result := make([]byte, len(audioData)+len(dataWithHeader))
 	copy(result, audioData)
-
-	// Convert data to bits
-	dataBits := bytesToBits(dataWithHeader)
-
-	// Embed data in audio samples using LSB
-	for i, bit := range dataBits {
-		if headerSize+i < len(result) {
-			result[headerSize+i] = (result[headerSize+i] & LSBMask) | bit
-		}
-	}
+	copy(result[len(audioData):], dataWithHeader)
 
 	return result, nil
 }
 
 // ExtractDataFromAudio extracts data from audio file
 func ExtractDataFromAudio(audioData []byte) ([]byte, error) {
-	if len(audioData) < 44 {
-		return nil, errors.New("audio file too small or invalid")
+	if len(audioData) < 8 {
+		return nil, errors.New("audio file too small")
 	}
 
-	// Find WAV data chunk
-	headerSize := findWavDataChunk(audioData)
-	if headerSize == -1 {
-		// For non-WAV files, try with default header size
-		headerSize = 44
+	// Tìm magic number ở phần cuối của file, giống như video
+	searchStart := len(audioData) - MaxDataSize - 8
+	if searchStart < 0 {
+		searchStart = 0
 	}
 
-	if len(audioData) <= headerSize {
-		return nil, errors.New("audio file has no sample data")
-	}
-
-	audioSamples := audioData[headerSize:]
-
-	if len(audioSamples) < 64 { // Need at least 8 bytes for header
-		return nil, errors.New("audio file too small to contain embedded data")
-	}
-
-	var extractedBits []uint8
-
-	// Extract LSBs from audio samples
-	for i, sample := range audioSamples {
-		extractedBits = append(extractedBits, sample&ExtractMask)
-
-		// Check for header every 64 bits
-		if len(extractedBits) >= 64 && len(extractedBits)%64 == 0 {
-			headerBytes := bitsToBytes(extractedBits[:64])
-			if len(headerBytes) >= 8 {
-				magic := binary.LittleEndian.Uint32(headerBytes[:4])
-				if magic == MagicNumber {
-					dataLength := binary.LittleEndian.Uint32(headerBytes[4:8])
-					if dataLength > 0 && dataLength <= MaxDataSize {
-						totalBitsNeeded := 64 + int(dataLength)*8
-
-						// Check if we have enough samples left
-						if totalBitsNeeded <= len(audioSamples) {
-							if len(extractedBits) >= totalBitsNeeded {
-								dataBytes := bitsToBytes(extractedBits[64:totalBitsNeeded])
-								return dataBytes, nil
-							}
-						} else {
-							// Not enough samples, break early
-							break
-						}
+	// Tìm kiếm magic number
+	for i := len(audioData) - 8; i >= searchStart; i-- {
+		if i+8 <= len(audioData) {
+			magic := binary.LittleEndian.Uint32(audioData[i : i+4])
+			if magic == MagicNumber {
+				dataLength := binary.LittleEndian.Uint32(audioData[i+4 : i+8])
+				if dataLength > 0 && dataLength <= MaxDataSize {
+					totalLength := 8 + int(dataLength)
+					if i+totalLength <= len(audioData) {
+						return audioData[i+8 : i+totalLength], nil
 					}
 				}
 			}
-		}
-
-		// Safety check to prevent excessive memory usage
-		if i > MaxDataSize*8 {
-			break
 		}
 	}
 
@@ -436,35 +375,6 @@ func ExtractDataFromAudio(audioData []byte) ([]byte, error) {
 }
 
 // Helper functions
-
-// findWavDataChunk finds the data chunk in a WAV file and returns its offset
-func findWavDataChunk(wavData []byte) int {
-	if len(wavData) < 12 {
-		return -1
-	}
-
-	// Skip RIFF header (12 bytes)
-	offset := 12
-
-	for offset+8 <= len(wavData) {
-		chunkID := string(wavData[offset : offset+4])
-		chunkSize := binary.LittleEndian.Uint32(wavData[offset+4 : offset+8])
-
-		if chunkID == "data" {
-			return offset + 8
-		}
-
-		// Move to next chunk
-		offset += 8 + int(chunkSize)
-
-		// Add padding byte if chunk size is odd
-		if chunkSize%2 == 1 {
-			offset++
-		}
-	}
-
-	return -1
-}
 
 // prepareDataWithHeader adds magic number and length header to data
 func prepareDataWithHeader(data []byte) []byte {

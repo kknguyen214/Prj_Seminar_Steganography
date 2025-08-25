@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"image"
+	_ "image/jpeg" // Nhận jpeg
 	"io"
 	"mime/multipart"
 	"net/http"
