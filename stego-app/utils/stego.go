@@ -374,6 +374,62 @@ func ExtractDataFromAudio(audioData []byte) ([]byte, error) {
 	return nil, errors.New("no embedded data found in audio")
 }
 
+// EmbedDataInPDF embeds data into a PDF file by appending it.
+func EmbedDataInPDF(pdfData []byte, data []byte) ([]byte, error) {
+	if len(pdfData) == 0 {
+		return nil, errors.New("pdf data cannot be empty")
+	}
+
+	if len(data) == 0 {
+		return nil, errors.New("data to embed cannot be empty")
+	}
+
+	if len(data) > MaxDataSize {
+		return nil, fmt.Errorf("data too large: %d bytes, max allowed: %d bytes", len(data), MaxDataSize)
+	}
+
+	// Phương pháp đơn giản: nối dữ liệu vào cuối file
+	dataWithHeader := prepareDataWithHeader(data)
+
+	// Tạo dữ liệu PDF mới bằng cách nối thêm dữ liệu của chúng ta
+	result := make([]byte, len(pdfData)+len(dataWithHeader))
+	copy(result, pdfData)
+	copy(result[len(pdfData):], dataWithHeader)
+
+	return result, nil
+}
+
+// ExtractDataFromPDF extracts data from a PDF file.
+func ExtractDataFromPDF(pdfData []byte) ([]byte, error) {
+	if len(pdfData) < 8 {
+		return nil, errors.New("pdf file too small")
+	}
+
+	// Tìm magic number ở phần cuối của file
+	searchStart := len(pdfData) - MaxDataSize - 8
+	if searchStart < 0 {
+		searchStart = 0
+	}
+
+	// Tìm kiếm magic number
+	for i := len(pdfData) - 8; i >= searchStart; i-- {
+		if i+8 <= len(pdfData) {
+			magic := binary.LittleEndian.Uint32(pdfData[i : i+4])
+			if magic == MagicNumber {
+				dataLength := binary.LittleEndian.Uint32(pdfData[i+4 : i+8])
+				if dataLength > 0 && dataLength <= MaxDataSize {
+					totalLength := 8 + int(dataLength)
+					if i+totalLength <= len(pdfData) {
+						return pdfData[i+8 : i+totalLength], nil
+					}
+				}
+			}
+		}
+	}
+
+	return nil, errors.New("no embedded data found in pdf")
+}
+
 // Helper functions
 
 // prepareDataWithHeader adds magic number and length header to data

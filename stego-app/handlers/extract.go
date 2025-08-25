@@ -20,8 +20,9 @@ type ExtractRequest struct {
 	Image      image.Image
 	VideoData  []byte
 	AudioData  []byte
+	PDFData    []byte
 	Passphrase string
-	MediaType  string // "image", "video", "audio"
+	MediaType  string // "image", "video", "audio", "pdf"
 }
 
 type ExtractResponse struct {
@@ -67,7 +68,7 @@ func parseExtractRequest(c *gin.Context) (*ExtractRequest, error) {
 		return nil, errors.New("passphrase is required")
 	}
 	if req.MediaType == "" {
-		return nil, errors.New("media_type is required (image/video/audio)")
+		return nil, errors.New("media_type is required (image/video/audio/pdf)")
 	}
 
 	// Parse media file containing hidden data
@@ -92,8 +93,11 @@ func parseExtractMedia(form *multipart.Form, req *ExtractRequest) error {
 	case "audio":
 		files = form.File["audio"]
 		fieldName = "audio"
+	case "pdf":
+		files = form.File["pdf"]
+		fieldName = "pdf"
 	default:
-		return errors.New("invalid media_type. Must be: image, video, or audio")
+		return errors.New("invalid media_type. Must be: image, video, audio, or pdf")
 	}
 
 	if len(files) == 0 {
@@ -132,6 +136,12 @@ func parseExtractMedia(form *multipart.Form, req *ExtractRequest) error {
 			return errors.New("failed to read audio file")
 		}
 		req.AudioData = data
+	case "pdf":
+		data, err := io.ReadAll(src)
+		if err != nil {
+			return errors.New("failed to read pdf file")
+		}
+		req.PDFData = data
 	}
 
 	return nil
@@ -150,6 +160,8 @@ func processExtract(req *ExtractRequest) (*ExtractResponse, error) {
 		rawData, err = utils.ExtractDataFromVideo(req.VideoData)
 	case "audio":
 		rawData, err = utils.ExtractDataFromAudio(req.AudioData)
+	case "pdf":
+		rawData, err = utils.ExtractDataFromPDF(req.PDFData)
 	default:
 		return nil, errors.New("invalid media type")
 	}
@@ -245,6 +257,16 @@ func processExtract(req *ExtractRequest) (*ExtractResponse, error) {
 			"filename": "extracted_video.mp4",
 			"size":     len(decoded),
 		}
+	case "pdf":
+		decoded, err := base64.StdEncoding.DecodeString(content)
+		if err != nil {
+			return nil, errors.New("failed to decode pdf content")
+		}
+		response.Content = map[string]interface{}{
+			"data":     base64.StdEncoding.EncodeToString(decoded),
+			"filename": "extracted_pdf.pdf",
+			"size":     len(decoded),
+		}
 
 	default:
 		return nil, errors.New("unknown message type: " + messageType)
@@ -264,6 +286,8 @@ func isValidExtractFormat(filename, mediaType string) bool {
 		return ext == ".mp4" || ext == ".avi" || ext == ".mkv" || ext == ".mov" || ext == ".wmv" || ext == ".flv"
 	case "audio":
 		return ext == ".wav" || ext == ".mp3" || ext == ".flac" || ext == ".aac" || ext == ".ogg"
+	case "pdf":
+		return ext == ".pdf"
 	}
 
 	return false

@@ -24,17 +24,19 @@ type EmbedRequest struct {
 	Image     image.Image
 	VideoData []byte
 	AudioData []byte
+	PDFData   []byte
 
 	// Metadata
 	Passphrase  string
-	MediaType   string // "image", "video", "audio" - carrier media type
-	MessageType string // "text", "audio", "image", "video" - secret message type
+	MediaType   string // "image", "video", "audio", "pdf" - carrier media type
+	MessageType string // "text", "audio", "image", "video", "pdf" - secret message type
 
 	// Secret message content
 	Text         string
 	MessageAudio []byte
 	MessageImage []byte
 	MessageVideo []byte
+	MessagePDF   []byte
 
 	// Original filename for proper response
 	OriginalFilename string
@@ -87,10 +89,10 @@ func parseEmbedRequest(c *gin.Context) (*EmbedRequest, error) {
 		return nil, errors.New("passphrase is required")
 	}
 	if req.MediaType == "" {
-		return nil, errors.New("media_type is required (image/video/audio)")
+		return nil, errors.New("media_type is required (image/video/audio/pdf)")
 	}
 	if req.MessageType == "" {
-		return nil, errors.New("message_type is required (text/audio/image/video)")
+		return nil, errors.New("message_type is required (text/audio/image/video/pdf)")
 	}
 
 	// Parse carrier media file (where to embed into)
@@ -121,8 +123,11 @@ func parseCarrierMedia(form *multipart.Form, req *EmbedRequest) error {
 	case "audio":
 		files = form.File["carrier_audio"]
 		fieldName = "carrier_audio"
+	case "pdf":
+		files = form.File["carrier_pdf"]
+		fieldName = "carrier_pdf"
 	default:
-		return errors.New("invalid media_type. Must be: image, video, or audio")
+		return errors.New("invalid media_type. Must be: image, video, audio, or pdf")
 	}
 
 	if len(files) == 0 {
@@ -165,6 +170,13 @@ func parseCarrierMedia(form *multipart.Form, req *EmbedRequest) error {
 			return errors.New("failed to read audio file")
 		}
 		req.AudioData = data
+	case "pdf":
+		// For PDF, read as bytes
+		data, err := io.ReadAll(src)
+		if err != nil {
+			return errors.New("failed to read pdf file")
+		}
+		req.PDFData = data
 	}
 
 	return nil
@@ -245,8 +257,30 @@ func parseMessageContent(form *multipart.Form, req *EmbedRequest) error {
 		}
 		return nil
 
+	case "pdf":
+		pdfFiles := form.File["message_pdf"]
+		if len(pdfFiles) == 0 {
+			return errors.New("message pdf file is required for pdf message type")
+		}
+
+		if !isValidMessageFormat(pdfFiles[0].Filename, "pdf") {
+			return errors.New("unsupported message pdf format")
+		}
+
+		src, err := pdfFiles[0].Open()
+		if err != nil {
+			return errors.New("failed to open message pdf file")
+		}
+		defer src.Close()
+
+		req.MessagePDF, err = io.ReadAll(src)
+		if err != nil {
+			return errors.New("failed to read message pdf file")
+		}
+		return nil
+
 	default:
-		return errors.New("invalid message_type. Must be: text, audio, image, or video")
+		return errors.New("invalid message_type. Must be: text, audio, image, video, or pdf")
 	}
 }
 
@@ -261,6 +295,8 @@ func isValidCarrierFormat(filename, mediaType string) bool {
 		return ext == ".mp4" || ext == ".avi" || ext == ".mkv" || ext == ".mov" || ext == ".wmv" || ext == ".flv"
 	case "audio":
 		return ext == ".wav" || ext == ".mp3" || ext == ".flac" || ext == ".aac" || ext == ".ogg"
+	case "pdf":
+		return ext == ".pdf"
 	}
 
 	return false
@@ -277,6 +313,8 @@ func isValidMessageFormat(filename, messageType string) bool {
 		return ext == ".mp4" || ext == ".avi" || ext == ".mkv" || ext == ".mov" || ext == ".wmv" || ext == ".flv" || ext == ".webm"
 	case "audio":
 		return ext == ".wav" || ext == ".mp3" || ext == ".flac" || ext == ".aac" || ext == ".ogg" || ext == ".m4a"
+	case "pdf":
+		return ext == ".pdf"
 	}
 
 	return false
@@ -339,6 +377,14 @@ func processEmbed(req *EmbedRequest) ([]byte, string, string, error) {
 		}
 		contentType = getAudioContentType(req.OriginalFilename)
 		filename = generateFilename(req.OriginalFilename, "embedded", "")
+
+	case "pdf":
+		result, err = utils.EmbedDataInPDF(req.PDFData, fullData)
+		if err != nil {
+			return nil, "", "", errors.New("failed to embed data in pdf: " + err.Error())
+		}
+		contentType = "application/pdf"
+		filename = generateFilename(req.OriginalFilename, "embedded", "")
 	}
 
 	return result, contentType, filename, nil
@@ -363,6 +409,9 @@ func createMessageData(req *EmbedRequest) map[string]interface{} {
 	case "video":
 		messageData["content"] = base64.StdEncoding.EncodeToString(req.MessageVideo)
 		messageData["size"] = len(req.MessageVideo)
+	case "pdf":
+		messageData["content"] = base64.StdEncoding.EncodeToString(req.MessagePDF)
+		messageData["size"] = len(req.MessagePDF)
 	}
 
 	return messageData
