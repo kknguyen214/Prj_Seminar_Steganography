@@ -1,6 +1,5 @@
 // API Configuration
-// const API_BASE = 'http://localhost:8080/api';
-const API_BASE = 'https://steganography-lab-backend.onrender.com/api';
+const API_BASE = '/api';
 
 // Tab switching
 function switchTab(tabName) {

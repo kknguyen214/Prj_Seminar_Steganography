@@ -3,20 +3,15 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 	"stego-app/handlers"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	r := gin.Default()
 
-	// Cấu hình CORS cho production
-	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:5500", "http://127.0.0.1:5500", "https://steganography-lab.onrender.com"}
-	r.Use(cors.New(config))
+	// Request từ trình duyệt đến Nginx, rồi Nginx gọi đến backend -> giao tiếp server-to-server.
 
 	// API routes
 	r.POST("/api/embed", handlers.EmbedHandler)
@@ -25,13 +20,10 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// Lấy port từ biến môi trường của Render
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080" // Chạy port 8080 nếu không có biến môi trường (khi chạy local)
-		log.Printf("Defaulting to port %s", port)
+	// Port được định nghĩa trong docker-compose, chạy cố định ở đây.
+	port := "8080"
+	log.Printf("API server listening on http://localhost:%s", port)
+	if err := r.Run(":" + port); err != nil {
+		log.Fatalf("Failed to run server: %v", err)
 	}
-
-	log.Printf("Listening on port %s", port)
-	r.Run(":" + port)
 }
